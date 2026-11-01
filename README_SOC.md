@@ -1,4 +1,4 @@
-# Kyros SOC 0.5.0 — dashboard y centro de incidentes
+# Kyros SOC 0.6.0 — dashboard y centro de incidentes
 
 Esta rama incorpora un dashboard SOC, API defensiva, métricas reales, historial y un centro de gestión manual de incidentes, manteniendo la CLI OSINT original.
 
@@ -56,6 +56,8 @@ No introduzcas datos de pago para esta configuración. Si Render muestra un cost
 - IP Intelligence: clasificación local IPv4/IPv6 y enriquecimiento geográfico/ASN opt-in para IP públicas.
 - Domain Intelligence: validación local del formato y consultas DNS A, AAAA, MX, TXT y _dmarc únicamente con consentimiento explícito. No incluye reputación ni DKIM.
 - Email Intelligence: validación local de sintaxis y normalización del dominio, sin consultar ni transmitir la dirección.
+- Threat Intelligence: catálogo IOC local para IP, dominios, correos y hashes SHA-256, con fuente y confianza documentadas.
+- Event Correlation: registro manual de eventos y coincidencia exacta contra el catálogo IOC local; los resultados son pistas, no incidentes confirmados.
 - File Intelligence: tamaño, tipo por firma y hashes SHA-256/SHA-1/MD5; límite de 10 MB; sin ejecución ni envío externo.
 - Incident Center: creación manual de casos, severidad y estados abierto/reconocido/cerrado.
 - Historial: consulta de análisis y métricas sobre SQLite.
