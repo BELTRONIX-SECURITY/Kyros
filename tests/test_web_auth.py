@@ -202,3 +202,34 @@ def test_email_api_is_local_and_persisted(monkeypatch, tmp_path):
     assert response.status_code == 200
     assert response.json()["external_submission"] is False
     assert response.json()["risk"] == "unknown"
+
+
+def test_domain_dns_requires_explicit_opt_in(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    calls = []
+
+    def fake_dns(domain):
+        calls.append(domain)
+        return {"status": "ok", "records": {"A": ["192.0.2.10"]}}
+
+    monkeypatch.setattr("kyros.web.lookup_domain_dns", fake_dns)
+    auth = ("soc-admin", "a-strong-test-password-123")
+    headers = {"X-Kyros-Request": "1"}
+    local = client.post(
+        "/api/analyze/domain",
+        json={"indicator": "example.com"},
+        headers=headers,
+        auth=auth,
+    )
+    assert local.status_code == 200
+    assert calls == []
+    external = client.post(
+        "/api/analyze/domain",
+        json={"indicator": "example.com", "external_lookup": True},
+        headers=headers,
+        auth=auth,
+    )
+    assert external.status_code == 200
+    assert calls == ["example.com"]
+    assert external.json()["dns"]["records"]["A"] == ["192.0.2.10"]
