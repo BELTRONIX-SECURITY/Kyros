@@ -19,7 +19,7 @@ from kyros.database import (
     create_incident, dashboard_summary, list_analyses, list_incidents,
     save_analysis, update_incident_status,
 )
-from kyros.soc import MAX_FILE_SIZE, analyze_file, classify_domain, classify_ip
+from kyros.soc import MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip
 
 STATIC_DIR = Path(__file__).parent / "static"
 security = HTTPBasic(auto_error=False)
@@ -178,6 +178,16 @@ async def analyze_domain(request: IndicatorRequest):
                 "La consulta DNS externa aún no está habilitada en esta versión; no se transmitió el dominio."
             )
         result["history_id"] = save_analysis("domain", result["indicator"], result)
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/analyze/email", dependencies=[Depends(require_auth)])
+async def analyze_email(request: IndicatorRequest):
+    try:
+        result = classify_email(request.indicator)
+        result["history_id"] = save_analysis("email", result["indicator"], result)
         return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
