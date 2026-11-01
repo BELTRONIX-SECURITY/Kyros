@@ -17,7 +17,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from kyros.database import (
-    create_incident, dashboard_summary, list_analyses, list_incidents,
+    add_security_event, add_threat_indicator, correlate_security_events, create_incident,
+    dashboard_summary, list_analyses, list_incidents, list_security_events, list_threat_indicators,
     save_analysis, update_incident_status,
 )
 from kyros.soc import MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip
@@ -158,6 +159,22 @@ class IncidentCreate(BaseModel):
     indicator: str = Field(default="", max_length=253)
 
 
+class ThreatIndicatorCreate(BaseModel):
+    indicator_type: Literal["ip", "domain", "email", "sha256"]
+    indicator: str = Field(min_length=3, max_length=253)
+    confidence: int = Field(ge=0, le=100)
+    source: str = Field(min_length=2, max_length=100)
+    description: str = Field(default="", max_length=1000)
+
+
+class SecurityEventCreate(BaseModel):
+    source: str = Field(min_length=2, max_length=100)
+    event_type: str = Field(min_length=2, max_length=100)
+    indicator: str = Field(min_length=3, max_length=253)
+    severity: Literal["low", "medium", "high", "critical"] = "medium"
+    details: str = Field(default="", max_length=2000)
+
+
 class IncidentUpdate(BaseModel):
     status: Literal["open", "acknowledged", "closed"]
 
@@ -237,6 +254,49 @@ async def analyze_uploaded_file(file: UploadFile = File(...)):
 @app.get("/api/history", dependencies=[Depends(require_auth)])
 async def history(limit: int = 50):
     return {"items": list_analyses(limit)}
+
+
+@app.get("/api/threat-intel/indicators", dependencies=[Depends(require_auth)])
+async def threat_indicators(limit: int = 100):
+    return {"items": list_threat_indicators(limit)}
+
+
+@app.post("/api/threat-intel/indicators", dependencies=[Depends(require_auth)])
+async def add_threat_intel(request: ThreatIndicatorCreate):
+    value = request.indicator.strip()
+    try:
+        if request.indicator_type == "ip":
+            value = classify_ip(value)["indicator"]
+        elif request.indicator_type == "domain":
+            value = classify_domain(value)["indicator"]
+        elif request.indicator_type == "email":
+            value = classify_email(value)["indicator"]
+        elif request.indicator_type == "sha256":
+            import re
+            if not re.fullmatch(r"[a-fA-F0-9]{64}", value):
+                raise ValueError("El SHA-256 debe contener exactamente 64 caracteres hexadecimales.")
+            value = value.lower()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    item_id = add_threat_indicator(request.indicator_type, value, request.confidence, request.source, request.description)
+    return {"id": item_id, "indicator": value, "stored_locally": True}
+
+
+@app.post("/api/events", dependencies=[Depends(require_auth)])
+async def ingest_security_event(request: SecurityEventCreate):
+    event_id = add_security_event(request.source, request.event_type, request.indicator.strip(), request.severity, request.details)
+    return {"id": event_id, "status": "recorded_locally"}
+
+
+@app.get("/api/events", dependencies=[Depends(require_auth)])
+async def security_events(limit: int = 100):
+    return {"items": list_security_events(limit)}
+
+
+@app.get("/api/correlation", dependencies=[Depends(require_auth)])
+async def event_correlation(limit: int = 100):
+    return {"items": correlate_security_events(limit),
+            "note": "Las coincidencias IOC son pistas para investigación, no confirmaciones de incidente."}
 
 
 @app.get("/api/incidents", dependencies=[Depends(require_auth)])
