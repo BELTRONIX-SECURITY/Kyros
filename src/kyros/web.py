@@ -137,7 +137,7 @@ async def lookup_ip_external(ip: str) -> list[dict]:
 
 is_production = os.getenv("KYROS_ENV", "development").lower() == "production"
 app = FastAPI(
-    title="Kyros SOC API", version="0.5.0",
+    title="Kyros SOC API", version="0.6.0",
     description="Defensive triage API. External IP lookups require explicit opt-in.",
     docs_url=None if is_production else "/docs",
     redoc_url=None if is_production else "/redoc",
@@ -181,7 +181,7 @@ class IncidentUpdate(BaseModel):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "Kyros SOC", "version": "0.5.0"}
+    return {"status": "ok", "service": "Kyros SOC", "version": "0.6.0"}
 
 
 @app.get("/api/dashboard/summary", dependencies=[Depends(require_auth)])
