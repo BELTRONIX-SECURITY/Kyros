@@ -144,3 +144,47 @@ def test_weak_password_configuration_fails_closed(monkeypatch):
     monkeypatch.setenv("KYROS_AUTH_PASSWORD", "too-short")
     response = client.get("/", auth=("soc-admin", "too-short"))
     assert response.status_code == 503
+
+
+def test_dashboard_summary_and_incident_api(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    auth = ("soc-admin", "a-strong-test-password-123")
+    headers = {"X-Kyros-Request": "1"}
+    summary = client.get("/api/dashboard/summary", auth=auth)
+    assert summary.status_code == 200
+    assert summary.json()["total_analyses"] == 0
+
+    created = client.post(
+        "/api/incidents",
+        json={"title": "Suspicious login review", "severity": "high", "source": "siem"},
+        headers=headers,
+        auth=auth,
+    )
+    assert created.status_code == 200
+    incident_id = created.json()["id"]
+    assert created.json()["status"] == "open"
+
+    listing = client.get("/api/incidents", auth=auth)
+    assert listing.status_code == 200
+    assert listing.json()["items"][0]["id"] == incident_id
+
+    updated = client.patch(
+        f"/api/incidents/{incident_id}",
+        json={"status": "acknowledged"},
+        headers=headers,
+        auth=auth,
+    )
+    assert updated.status_code == 200
+    assert updated.json()["status"] == "acknowledged"
+
+
+def test_incident_rejects_invalid_severity(monkeypatch):
+    set_credentials(monkeypatch)
+    response = client.post(
+        "/api/incidents",
+        json={"title": "Invalid severity", "severity": "extreme"},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 422
