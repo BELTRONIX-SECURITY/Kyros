@@ -36,7 +36,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <button class="nav active" data-page="overview"><span class="ico">▦</span>Resumen general</button>
 <button class="nav" data-page="ip"><span class="ico">◎</span>IP Intelligence</button>
 <button class="nav" data-page="domain"><span class="ico">⌘</span>Domain Intelligence</button>
-<button class="nav" data-page="file"><span class="ico">▤</span>File Intelligence</button>
+<button class="nav" data-page="file"><span class="ico">▤</span>File Intelligence</button>\n<button class="nav" data-page="email"><span class="ico">✉</span>Email Intelligence</button>
 <button class="nav" data-page="incidents"><span class="ico">⚑</span>Incident Center</button>
 <button class="nav" data-page="history"><span class="ico">◷</span>Historial</button>
 </div>
@@ -75,6 +75,12 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <div class="page-head"><div><div class="eyebrow">Indicator analysis</div><h1>Domain Intelligence</h1><div class="muted">Validación local del formato de dominios.</div></div></div>
 <div class="panel"><div class="field"><label>Nombre de dominio</label><input id="domain" placeholder="Ej. example.com"></div><button class="btn" onclick="analyzeIndicator('domain')">Analizar dominio</button><pre class="output" id="domain-output">Introduce un dominio sin URL ni ruta.</pre></div>
 <div class="note">La consulta DNS, SPF, DKIM, DMARC y reputación de dominios aún no están habilitadas en esta versión. No se transmite el dominio a terceros.</div>
+</section>
+
+<section class="page" id="page-email">
+<div class="page-head"><div><div class="eyebrow">Email intelligence</div><h1>Email Intelligence</h1><div class="muted">Validación local de direcciones sin divulgación externa.</div></div></div>
+<div class="panel"><div class="field"><label>Dirección de correo</label><input id="email" type="email" maxlength="254" placeholder="usuario@example.com"></div><button class="btn" onclick="analyzeIndicator('email')">Analizar correo</button><pre class="output" id="email-output">Introduce una dirección para validar su formato.</pre></div>
+<div class="note">Esta comprobación solo valida sintaxis y normaliza el dominio. No confirma que el buzón exista ni consulta DNS, brechas o reputación. La dirección no se envía a servicios externos.</div>
 </section>
 
 <section class="page" id="page-file">
@@ -118,7 +124,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 </section>
 </div></main></div>
 <script>
-const pageNames={overview:"Resumen general",ip:"IP Intelligence",domain:"Domain Intelligence",file:"File Intelligence",incidents:"Incident Center",history:"Historial",platform:"Estado e integraciones"};
+const pageNames={overview:"Resumen general",ip:"IP Intelligence",domain:"Domain Intelligence",file:"File Intelligence",email:"Email Intelligence",incidents:"Incident Center",history:"Historial",platform:"Estado e integraciones"};
 function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.getElementById("page-"+name).classList.add("active");document.querySelectorAll(".nav[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===name));document.getElementById("crumb").textContent=pageNames[name];if(name==="overview")refreshDashboard();if(name==="incidents")loadIncidents();if(name==="history")loadHistory();}
 document.querySelectorAll(".nav[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
 function requestHeaders(json=false){const h={"X-Kyros-Request":"1"};if(json)h["Content-Type"]="application/json";return h}
