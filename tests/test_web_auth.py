@@ -258,3 +258,28 @@ def test_local_threat_intel_and_event_correlation(monkeypatch, tmp_path):
     assert correlated.status_code == 200
     assert correlated.json()["items"][0]["threat_match"]["indicator"] == "203.0.113.7"
     assert correlated.json()["items"][0]["incident_confirmed"] is False
+
+
+def test_threat_intel_csv_import_is_local_and_validated(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    csv_data = (
+        "indicator_type,indicator,confidence,source,description\n"
+        "ip,203.0.113.9,80,test-feed,Test indicator\n"
+        "domain,bad_domain,90,test-feed,Invalid domain\n"
+    )
+    response = client.post(
+        "/api/threat-intel/import",
+        files={"file": ("indicators.csv", csv_data.encode(), "text/csv")},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 200
+    assert response.json()["imported"] == 1
+    assert len(response.json()["errors"]) == 1
+    assert response.json()["external_submission"] is False
+    listing = client.get(
+        "/api/threat-intel/indicators",
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert listing.json()["items"][0]["indicator"] == "203.0.113.9"
