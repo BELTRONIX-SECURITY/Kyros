@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import os
 import secrets
 from pathlib import Path
@@ -280,6 +282,58 @@ async def add_threat_intel(request: ThreatIndicatorCreate):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     item_id = add_threat_indicator(request.indicator_type, value, request.confidence, request.source, request.description)
     return {"id": item_id, "indicator": value, "stored_locally": True}
+
+
+
+@app.post("/api/threat-intel/import", dependencies=[Depends(require_auth)])
+async def import_threat_intel_csv(file: UploadFile = File(...)):
+    raw = await file.read(1024 * 1024 + 1)
+    await file.close()
+    if len(raw) > 1024 * 1024:
+        raise HTTPException(status_code=413, detail="El CSV supera el límite de 1 MB.")
+    try:
+        text = raw.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(text))
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=422, detail="El CSV debe estar codificado en UTF-8.") from exc
+    required = {"indicator_type", "indicator"}
+    if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
+        raise HTTPException(status_code=422, detail="El CSV requiere columnas indicator_type e indicator.")
+    imported = 0
+    errors = []
+    for row_number, row in enumerate(reader, start=2):
+        if row_number > 5001:
+            errors.append("Se alcanzó el máximo de 5000 filas.")
+            break
+        kind = (row.get("indicator_type") or "").strip().lower()
+        value = (row.get("indicator") or "").strip()
+        try:
+            if kind == "ip":
+                value = classify_ip(value)["indicator"]
+            elif kind == "domain":
+                value = classify_domain(value)["indicator"]
+            elif kind == "email":
+                value = classify_email(value)["indicator"]
+            elif kind == "sha256":
+                import re
+                if not re.fullmatch(r"[a-fA-F0-9]{64}", value):
+                    raise ValueError("SHA-256 no válido.")
+                value = value.lower()
+            else:
+                raise ValueError("Tipo no admitido.")
+            confidence = int((row.get("confidence") or "50").strip())
+            if not 0 <= confidence <= 100:
+                raise ValueError("Confianza fuera del rango 0-100.")
+            add_threat_indicator(
+                kind, value, confidence,
+                (row.get("source") or "csv-import").strip()[:100],
+                (row.get("description") or "").strip()[:1000],
+            )
+            imported += 1
+        except (ValueError, TypeError) as exc:
+            errors.append(f"Fila {row_number}: {str(exc)[:180]}")
+    return {"imported": imported, "errors": errors[:100],
+            "stored_locally": True, "external_submission": False}
 
 
 @app.post("/api/events", dependencies=[Depends(require_auth)])
