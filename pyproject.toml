@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.5"]
+yara = ["yara-python>=4.5"]
 
 [project.scripts]
 kyros = "kyros.cli:main"
