@@ -58,7 +58,7 @@ No introduzcas datos de pago para esta configuración. Si Render muestra un cost
 - Email Intelligence: validación local de sintaxis y normalización del dominio, sin consultar ni transmitir la dirección.
 - Threat Intelligence: catálogo IOC local para IP, dominios, correos y hashes SHA-256, con fuente y confianza documentadas; importación CSV validada de hasta 5000 filas y 1 MB.
 - Event Correlation: registro manual de eventos y coincidencia exacta contra el catálogo IOC local; los resultados son pistas, no incidentes confirmados.
-- File Intelligence: tamaño, tipo por firma y hashes SHA-256/SHA-1/MD5; límite de 10 MB; sin ejecución ni envío externo.
+- File Intelligence: tamaño, tipo por firma y hashes SHA-256/SHA-1/MD5; límite de 10 MB; sin ejecución ni envío externo. Incluye interfaz opcional para reglas YARA locales mediante `KYROS_YARA_RULES` e instalación `pip install -e '.[yara]'`; no incluye reglas propias ni ClamAV.
 - Incident Center: creación manual de casos, severidad y estados abierto/reconocido/cerrado.
 - Historial: consulta de análisis y métricas sobre SQLite.
 - Estado e integraciones: capacidades disponibles y pendientes.
@@ -86,4 +86,4 @@ Documentación de proveedores:
 
 HTTP Basic protege el acceso solo cuando se utiliza sobre HTTPS. Para una plataforma expuesta a Internet con varios usuarios, añade un proveedor de identidad/SSO, limitación de intentos en el perímetro, gestión de usuarios y auditoría. No reutilices contraseñas personales. La autenticación HTTP Basic del prototipo no ofrece cuentas individuales, MFA ni cierre de sesión centralizado.
 
-Esta versión todavía no incorpora reputación automática de amenazas, listas de abuso externas, YARA, ClamAV, sandbox, conectores SIEM/EDR ni alertas en tiempo real. La correlación disponible es manual y local; el Incident Center permite registrar casos manualmente. No subas muestras confidenciales ni datos personales hasta completar una revisión de seguridad y pruebas de despliegue. Un indicador válido o desconocido no demuestra por sí solo un ataque activo.
+Esta versión todavía no incorpora reputación automática de amenazas, listas de abuso externas, ClamAV, sandbox, conectores SIEM/EDR ni alertas en tiempo real. YARA es opcional y requiere reglas locales configuradas. La correlación disponible es manual y local; el Incident Center permite registrar casos manualmente. No subas muestras confidenciales ni datos personales hasta completar una revisión de seguridad y pruebas de despliegue. Un indicador válido o desconocido no demuestra por sí solo un ataque activo.
