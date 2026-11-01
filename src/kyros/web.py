@@ -23,7 +23,7 @@ from kyros.database import (
     dashboard_summary, list_analyses, list_incidents, list_security_events, list_threat_indicators,
     save_analysis, update_incident_status,
 )
-from kyros.soc import MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip
+from kyros.soc import MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip, scan_yara
 
 STATIC_DIR = Path(__file__).parent / "static"
 security = HTTPBasic(auto_error=False)
@@ -247,6 +247,7 @@ async def analyze_uploaded_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=413, detail="El tamaño máximo permitido es 10 MB.")
     try:
         result = analyze_file(data, file.filename)
+        result["yara"] = scan_yara(data)
         result["history_id"] = save_analysis("file", result["hashes"]["sha256"], result)
         return result
     except ValueError as exc:
