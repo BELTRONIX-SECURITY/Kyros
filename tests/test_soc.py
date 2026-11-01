@@ -49,3 +49,8 @@ def test_email_is_validated_locally():
 def test_invalid_email(value):
     with pytest.raises(ValueError):
         classify_email(value)
+
+
+def test_png_signature_detection():
+    result = analyze_file(b"\\x89PNG\\r\\n\\x1a\\ncontent", "image.png")
+    assert result["file_type"] == "PNG image"
