@@ -32,17 +32,23 @@ kyros-web
 
 Abre http://127.0.0.1:8000. El navegador solicitará autenticación HTTP Basic. En desarrollo, la documentación está en /docs.
 
-## Despliegue público protegido en Render
+## Despliegue de prueba gratuito en Render
 
-Existe un archivo `render.yaml` para desplegar desde la rama `security/private-deploy`.
+Esta rama está preparada para una **prueba con el plan Free** de Render. No incluye disco persistente ni servicios de pago.
 
-1. Crea una cuenta Render y conecta GitHub.
-2. En Render, crea un Blueprint y selecciona este repositorio y la rama `security/private-deploy`.
-3. Render detectará `render.yaml`. Configura `KYROS_AUTH_USERNAME` y `KYROS_AUTH_PASSWORD` como secretos. Usa una contraseña aleatoria de al menos 20 caracteres; no la guardes en GitHub.
-4. Despliega el servicio y prueba la URL HTTPS. El navegador debe solicitar credenciales antes de mostrar el dashboard.
-5. Mantén el disco persistente asociado al servicio para conservar el historial SQLite.
+1. En Render, crea un Blueprint y selecciona este repositorio y la rama `security/free-deploy`.
+2. Render leerá `render.yaml`. Configura `KYROS_AUTH_USERNAME` y `KYROS_AUTH_PASSWORD` como variables secretas. La contraseña debe tener al menos 16 caracteres; utiliza una contraseña aleatoria y exclusiva.
+3. Revisa que el servicio figure con plan **Free** y que no se añadan discos ni otros recursos de pago antes de confirmar.
+4. Despliega y prueba la URL HTTPS. El navegador debe solicitar credenciales antes de mostrar el dashboard.
 
-El servicio usa HTTPS administrado por Render, escucha en 0.0.0.0 mediante el comando de inicio y guarda la base SQLite en /var/data. El plan configurado requiere un servicio con disco persistente; revisa el precio vigente de Render antes de crear recursos.
+### Limitaciones del plan gratuito
+
+- El servicio puede entrar en suspensión tras un periodo de inactividad y tardar en responder cuando se reactive.
+- El sistema de archivos es efímero: la base SQLite se guarda en `/tmp/kyros_soc.sqlite3` y el historial puede desaparecer al reiniciar, suspender o volver a desplegar el servicio.
+- El plan gratuito tiene límites de uso y recursos definidos por Render, que pueden cambiar.
+- Esta configuración es para demostración y validación inicial, no para producción ni para almacenar información importante.
+
+No introduzcas datos de pago para esta configuración. Si Render muestra un coste o exige cambiar a un plan de pago, detente y revisa la pantalla antes de continuar.
 
 ## Seguridad incluida en esta fase
 
@@ -57,6 +63,6 @@ El servicio usa HTTPS administrado por Render, escucha en 0.0.0.0 mediante el co
 
 ## Límites y medidas adicionales antes de usar con datos reales
 
-HTTP Basic protege el acceso solo cuando se utiliza sobre HTTPS. Para una plataforma expuesta a Internet con varios usuarios, añade un proveedor de identidad/SSO como Cloudflare Access, limitación de intentos en el perímetro, gestión de usuarios y auditoría. No reutilices contraseñas personales. La autenticación HTTP Basic del prototipo no ofrece cuentas individuales, MFA ni cierre de sesión centralizado.
+HTTP Basic protege el acceso solo cuando se utiliza sobre HTTPS. Para una plataforma expuesta a Internet con varios usuarios, añade un proveedor de identidad/SSO, limitación de intentos en el perímetro, gestión de usuarios y auditoría. No reutilices contraseñas personales. La autenticación HTTP Basic del prototipo no ofrece cuentas individuales, MFA ni cierre de sesión centralizado.
 
 Esta versión no incorpora todavía reputación externa, DNS, YARA, ClamAV, sandbox, correlación SIEM, gestión de incidentes ni alertas en tiempo real. No subas muestras confidenciales ni datos personales hasta completar una revisión de seguridad y pruebas de despliegue. Un indicador válido o desconocido no demuestra por sí solo un ataque activo.
