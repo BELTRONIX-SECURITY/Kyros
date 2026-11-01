@@ -82,3 +82,37 @@ def analyze_file(data: bytes, filename: str | None = None) -> dict[str, Any]:
         "assessment": "Triaje estático inicial. No se ejecutó el archivo, no se usaron firmas YARA/antivirus y no se envió a terceros.",
         "execution_performed": False, "external_submission": False,
     }
+
+
+def classify_email(value: str) -> dict[str, Any]:
+    """Validate an email address locally without querying or disclosing it externally."""
+    raw = value.strip()
+    if len(raw) > 254 or raw.count("@") != 1:
+        raise ValueError("Introduce una dirección de correo válida.")
+    local, domain = raw.rsplit("@", 1)
+    if (
+        not local or len(local) > 64 or not domain or
+        local.startswith(".") or local.endswith(".") or ".." in local or
+        any(ch.isspace() for ch in raw) or
+        not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+", local)
+    ):
+        raise ValueError("La dirección de correo no tiene un formato válido.")
+    try:
+        normalized_domain = domain.encode("idna").decode("ascii").lower()
+    except UnicodeError as exc:
+        raise ValueError("El dominio del correo no es válido.") from exc
+    if not DOMAIN_RE.fullmatch(normalized_domain):
+        raise ValueError("El dominio del correo no tiene un formato válido.")
+    normalized = f"{local}@{normalized_domain}"
+    return {
+        "indicator": normalized,
+        "type": "email",
+        "domain": normalized_domain,
+        "risk": "unknown",
+        "assessment": (
+            "Formato válido. No se ha comprobado la existencia del buzón, DNS, "
+            "brechas ni reputación; no se ha transmitido la dirección."
+        ),
+        "external_lookup": False,
+        "external_submission": False,
+    }
