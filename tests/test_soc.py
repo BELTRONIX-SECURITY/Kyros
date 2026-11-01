@@ -32,3 +32,20 @@ def test_file_hashes():
 def test_empty_file():
     with pytest.raises(ValueError):
         analyze_file(b"")
+
+
+from kyros.soc import classify_email
+
+
+def test_email_is_validated_locally():
+    result = classify_email("Analyst@Example.COM")
+    assert result["indicator"] == "Analyst@example.com"
+    assert result["domain"] == "example.com"
+    assert result["external_submission"] is False
+    assert result["risk"] == "unknown"
+
+
+@pytest.mark.parametrize("value", ["not-an-email", "a@@example.com", "a@bad_domain", "a b@example.com"])
+def test_invalid_email(value):
+    with pytest.raises(ValueError):
+        classify_email(value)
