@@ -2,7 +2,7 @@
 
 Herramienta OSINT automatizada para **correos electrónicos**, escrita en Python. Consulta varias fuentes en paralelo y devuelve un informe en terminal o en JSON.
 
-> Inspirada en [mosint](https://github.com/alpkeskin/mosint) (Go). Este proyecto está escrito desde cero.
+> Este proyecto está escrito desde cero.
 
 ## Qué hace
 
@@ -65,4 +65,4 @@ Usa esta herramienta solo sobre direcciones propias o con autorización expresa,
 
 ## Licencia
 
-MIT. Sustituye `[TU NOMBRE]` en `LICENSE`.
+MIT. Sustituye `[Libardo Beltran]` en `LICENSE`.
