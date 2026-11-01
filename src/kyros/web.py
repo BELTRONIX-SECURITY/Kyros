@@ -1,10 +1,12 @@
 """FastAPI application for the Kyros SOC web interface."""
 from __future__ import annotations
 
+import asyncio
 import os
 import secrets
 from pathlib import Path
 
+import httpx
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -70,11 +72,63 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+async def _fetch_ipapi(client: httpx.AsyncClient, ip: str) -> dict:
+    try:
+        response = await client.get(f"https://ipapi.co/{ip}/json/")
+        if response.status_code != 200:
+            return {"provider": "ipapi.co", "status": "unavailable"}
+        data = response.json()
+        if data.get("error"):
+            return {"provider": "ipapi.co", "status": "unavailable"}
+        return {
+            "provider": "ipapi.co",
+            "status": "ok",
+            "data": {
+                key: data.get(key)
+                for key in ("city", "region", "country_name", "country",
+                            "asn", "org", "latitude", "longitude", "timezone")
+                if data.get(key) is not None
+            },
+        }
+    except (httpx.HTTPError, ValueError):
+        return {"provider": "ipapi.co", "status": "unavailable"}
+
+
+async def _fetch_freeipapi(client: httpx.AsyncClient, ip: str) -> dict:
+    try:
+        response = await client.get(f"https://free.freeipapi.com/api/v1/json/{ip}")
+        if response.status_code != 200:
+            return {"provider": "FreeIPAPI", "status": "unavailable"}
+        data = response.json()
+        return {
+            "provider": "FreeIPAPI",
+            "status": "ok",
+            "data": {
+                key: data.get(key)
+                for key in ("countryName", "countryCode", "cityName", "regionName",
+                            "asn", "asnOrganization", "latitude", "longitude", "isProxy")
+                if data.get(key) is not None
+            },
+        }
+    except (httpx.HTTPError, ValueError):
+        return {"provider": "FreeIPAPI", "status": "unavailable"}
+
+
+async def lookup_ip_external(ip: str) -> list[dict]:
+    """Query only fixed, allowlisted provider endpoints; never accept a caller-supplied URL."""
+    timeout = httpx.Timeout(5.0, connect=3.0)
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+        return list(await asyncio.gather(
+            _fetch_ipapi(client, ip),
+            _fetch_freeipapi(client, ip),
+        ))
+
+
 is_production = os.getenv("KYROS_ENV", "development").lower() == "production"
 app = FastAPI(
     title="Kyros SOC API",
-    version="0.3.0",
-    description="Defensive triage API. External lookups are disabled.",
+    version="0.4.0",
+    description="Defensive triage API. External IP lookups require explicit opt-in.",
     docs_url=None if is_production else "/docs",
     redoc_url=None if is_production else "/redoc",
     openapi_url=None if is_production else "/openapi.json",
@@ -84,17 +138,31 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 class IndicatorRequest(BaseModel):
     indicator: str = Field(min_length=1, max_length=253)
+    external_lookup: bool = False
 
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "Kyros SOC", "version": "0.3.0"}
+    return {"status": "ok", "service": "Kyros SOC", "version": "0.4.0"}
 
 
 @app.post("/api/analyze/ip", dependencies=[Depends(require_auth)])
 async def analyze_ip(request: IndicatorRequest):
     try:
         result = classify_ip(request.indicator)
+        if request.external_lookup:
+            if result["scope"] != "public":
+                result["external_lookup_note"] = (
+                    "Consulta externa omitida: solo se consultan direcciones IP públicas."
+                )
+            else:
+                result["external_lookup"] = True
+                result["external_sources"] = await lookup_ip_external(result["indicator"])
+                result["external_lookup_note"] = (
+                    "Se transmitió únicamente la dirección IP a los proveedores indicados. "
+                    "Los datos geográficos y ASN son aproximados y no constituyen reputación "
+                    "ni evidencia de actividad maliciosa."
+                )
         result["history_id"] = save_analysis("ip", result["indicator"], result)
         return result
     except ValueError as exc:
