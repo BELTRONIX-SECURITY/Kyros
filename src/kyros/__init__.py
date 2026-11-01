@@ -1,3 +1,3 @@
-"""kyros: herramienta OSINT automatizada para correos electrónicos."""
+"""Kyros: OSINT email intelligence and local-first SOC triage."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
