@@ -1,6 +1,6 @@
-# Kyros SOC — primera fase web
+# Kyros SOC 0.5.0 — dashboard y centro de incidentes
 
-Esta rama incorpora una primera interfaz web y API defensiva, manteniendo la CLI OSINT original.
+Esta rama incorpora un dashboard SOC, API defensiva, métricas reales, historial y un centro de gestión manual de incidentes, manteniendo la CLI OSINT original.
 
 ## Ejecución local
 
@@ -49,6 +49,18 @@ Esta rama está preparada para una **prueba con el plan Free** de Render. No inc
 - Esta configuración es para demostración y validación inicial, no para producción ni para almacenar información importante.
 
 No introduzcas datos de pago para esta configuración. Si Render muestra un coste o exige cambiar a un plan de pago, detente y revisa la pantalla antes de continuar.
+
+## Módulos disponibles en 0.5.0
+
+- Resumen general: contadores de análisis, actividad de las últimas 24 horas y distribución por tipo/severidad.
+- IP Intelligence: clasificación local IPv4/IPv6 y enriquecimiento geográfico/ASN opt-in para IP públicas.
+- Domain Intelligence: validación local del formato. DNS, SPF, DKIM, DMARC y reputación todavía no están habilitados en la interfaz web.
+- File Intelligence: tamaño, tipo por firma y hashes SHA-256/SHA-1/MD5; límite de 10 MB; sin ejecución ni envío externo.
+- Incident Center: creación manual de casos, severidad y estados abierto/reconocido/cerrado.
+- Historial: consulta de análisis y métricas sobre SQLite.
+- Estado e integraciones: capacidades disponibles y pendientes.
+
+Los incidentes son registros manuales; no se generan detecciones automáticas ni se declara un ataque activo sin telemetría correlacionada.
 
 ## Seguridad y fuentes externas
 
