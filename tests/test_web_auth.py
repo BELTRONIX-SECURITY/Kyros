@@ -46,6 +46,48 @@ def test_api_accepts_configured_credentials(monkeypatch, tmp_path):
     )
     assert response.status_code == 200
     assert response.json()["scope"] == "public"
+    assert response.json()["external_lookup"] is False
+
+
+def test_external_ip_lookup_requires_explicit_opt_in(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    calls = []
+
+    async def fake_lookup(ip):
+        calls.append(ip)
+        return [{"provider": "test-provider", "status": "ok", "data": {"country": "US"}}]
+
+    monkeypatch.setattr("kyros.web.lookup_ip_external", fake_lookup)
+    response = client.post(
+        "/api/analyze/ip",
+        json={"indicator": "8.8.8.8", "external_lookup": True},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 200
+    assert calls == ["8.8.8.8"]
+    assert response.json()["external_lookup"] is True
+    assert response.json()["external_sources"][0]["provider"] == "test-provider"
+
+
+def test_external_lookup_skips_non_public_ip(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+
+    async def unexpected_lookup(ip):
+        raise AssertionError("Non-public IP must not be sent to external providers")
+
+    monkeypatch.setattr("kyros.web.lookup_ip_external", unexpected_lookup)
+    response = client.post(
+        "/api/analyze/ip",
+        json={"indicator": "192.168.1.10", "external_lookup": True},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 200
+    assert response.json()["external_lookup"] is False
+    assert "omitida" in response.json()["external_lookup_note"]
 
 
 def test_api_rejects_post_without_csrf_header(monkeypatch):
