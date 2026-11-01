@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 import httpx
+import dns.resolver
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -103,6 +104,29 @@ async def _fetch_freeipapi(client: httpx.AsyncClient, ip: str) -> dict:
         return {"provider": "FreeIPAPI", "status": "unavailable"}
 
 
+
+def lookup_domain_dns(domain: str) -> dict:
+    """Query DNS records only after explicit user opt-in."""
+    resolver = dns.resolver.Resolver(configure=True)
+    resolver.timeout = 1.5
+    resolver.lifetime = 2.5
+    records: dict[str, list[str]] = {}
+    queries = (("A", domain), ("AAAA", domain), ("MX", domain),
+               ("TXT", domain), ("DMARC", f"_dmarc.{domain}"))
+    for record_type, query_name in queries:
+        query_type = "TXT" if record_type == "DMARC" else record_type
+        try:
+            answer = resolver.resolve(query_name, query_type)
+            values = [str(item) for item in answer][:20]
+            if values:
+                records[record_type] = values
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN,
+                dns.resolver.NoNameservers, dns.resolver.LifetimeTimeout,
+                dns.exception.Timeout):
+            continue
+    return {"status": "ok" if records else "no_records", "records": records}
+
+
 async def lookup_ip_external(ip: str) -> list[dict]:
     """Query fixed provider endpoints; never accept a caller-supplied URL."""
     timeout = httpx.Timeout(5.0, connect=3.0)
@@ -174,8 +198,11 @@ async def analyze_domain(request: IndicatorRequest):
     try:
         result = classify_domain(request.indicator)
         if request.external_lookup:
+            result["external_lookup"] = True
+            result["dns"] = await asyncio.to_thread(lookup_domain_dns, result["indicator"])
             result["external_lookup_note"] = (
-                "La consulta DNS externa aún no está habilitada en esta versión; no se transmitió el dominio."
+                "Se consultó el DNS configurado para A, AAAA, MX, TXT y DMARC. "
+                "La consulta revela el dominio al resolvedor DNS; no constituye una evaluación de reputación."
             )
         result["history_id"] = save_analysis("domain", result["indicator"], result)
         return result
