@@ -19,8 +19,14 @@ STATIC_DIR = Path(__file__).parent / "static"
 security = HTTPBasic(auto_error=False)
 
 
-def require_auth(\n    request: Request, credentials: HTTPBasicCredentials | None = Depends(security)\n) -> str:
-    """Require configured HTTP Basic credentials for every application route."""
+def require_auth(
+    request: Request, credentials: HTTPBasicCredentials | None = Depends(security)
+) -> str:
+    """Require configured HTTP Basic credentials and reject cross-origin form posts."""
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        if request.headers.get("x-kyros-request") != "1":
+            raise HTTPException(status_code=403, detail="Solicitud de origen no validada.")
+
     expected_user = os.getenv("KYROS_AUTH_USERNAME", "")
     expected_password = os.getenv("KYROS_AUTH_PASSWORD", "")
     if not expected_user or len(expected_password) < 16:
@@ -34,6 +40,7 @@ def require_auth(\n    request: Request, credentials: HTTPBasicCredentials | Non
             detail="Autenticación requerida.",
             headers={"WWW-Authenticate": 'Basic realm="Kyros SOC", charset="UTF-8"'},
         )
+
     user_ok = secrets.compare_digest(credentials.username, expected_user)
     password_ok = secrets.compare_digest(credentials.password, expected_password)
     if not (user_ok and password_ok):
@@ -53,7 +60,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Cache-Control"] = "no-store"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; "
+            "base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        )
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
