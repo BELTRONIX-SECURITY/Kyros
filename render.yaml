@@ -2,23 +2,19 @@ services:
   - type: web
     name: kyros-soc
     runtime: python
-    plan: starter
+    plan: free
     region: frankfurt
-    branch: security/private-deploy
+    branch: security/free-deploy
     buildCommand: pip install .
     startCommand: uvicorn kyros.web:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
-    disk:
-      name: kyros-soc-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
       - key: KYROS_ENV
         value: production
       - key: KYROS_DB_PATH
-        value: /var/data/kyros_soc.sqlite3
+        value: /tmp/kyros_soc.sqlite3
       - key: KYROS_AUTH_USERNAME
         sync: false
       - key: KYROS_AUTH_PASSWORD
