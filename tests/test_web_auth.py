@@ -58,6 +58,33 @@ def test_api_rejects_post_without_csrf_header(monkeypatch):
     assert response.status_code == 403
 
 
+def test_file_upload_is_analyzed_without_execution_or_external_submission(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    response = client.post(
+        "/api/analyze/file",
+        files={"file": ("sample.txt", b"safe test content", "text/plain")},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["execution_performed"] is False
+    assert result["external_submission"] is False
+    assert len(result["hashes"]["sha256"]) == 64
+
+
+def test_file_upload_rejects_files_over_10mb(monkeypatch):
+    set_credentials(monkeypatch)
+    response = client.post(
+        "/api/analyze/file",
+        files={"file": ("large.bin", b"x" * (10 * 1024 * 1024 + 1), "application/octet-stream")},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 413
+
+
 def test_health_probe_is_public():
     response = client.get("/api/health")
     assert response.status_code == 200
