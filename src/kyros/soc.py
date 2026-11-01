@@ -116,3 +116,34 @@ def classify_email(value: str) -> dict[str, Any]:
         "external_lookup": False,
         "external_submission": False,
     }
+
+
+
+def scan_yara(data: bytes) -> dict[str, Any]:
+    """Run optional local YARA rules against bytes; never executes or uploads the sample."""
+    import os
+
+    rules_path = os.getenv("KYROS_YARA_RULES", "").strip()
+    if not rules_path:
+        return {"status": "not_configured", "matches": [],
+                "note": "Configura KYROS_YARA_RULES con una ruta local de reglas YARA."}
+    try:
+        import yara
+    except ImportError:
+        return {"status": "unavailable", "matches": [],
+                "note": "YARA no está instalado. Instala el extra opcional kyros[yara]."}
+    try:
+        rules = yara.compile(filepath=rules_path)
+        matches = rules.match(data=data, timeout=5)
+        return {
+            "status": "completed",
+            "matches": [
+                {"rule": match.rule, "namespace": match.namespace,
+                 "tags": list(match.tags)}
+                for match in matches[:50]
+            ],
+            "note": "Coincidencias YARA requieren análisis contextual; no son veredictos automáticos.",
+        }
+    except (OSError, yara.Error, TimeoutError) as exc:
+        return {"status": "error", "matches": [],
+                "note": f"No se pudo completar YARA: {type(exc).__name__}."}
