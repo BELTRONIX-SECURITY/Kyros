@@ -188,3 +188,17 @@ def test_incident_rejects_invalid_severity(monkeypatch):
         auth=("soc-admin", "a-strong-test-password-123"),
     )
     assert response.status_code == 422
+
+
+def test_email_api_is_local_and_persisted(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    response = client.post(
+        "/api/analyze/email",
+        json={"indicator": "analyst@example.com"},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 200
+    assert response.json()["external_submission"] is False
+    assert response.json()["risk"] == "unknown"
