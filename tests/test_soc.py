@@ -52,5 +52,5 @@ def test_invalid_email(value):
 
 
 def test_png_signature_detection():
-    result = analyze_file(b"\x89PNG\r\n\x1a\ncontent", "image.png")
+    result = analyze_file(bytes([137, 80, 78, 71, 13, 10, 26, 10]) + b"content", "image.png")
     assert result["file_type"] == "PNG image"
