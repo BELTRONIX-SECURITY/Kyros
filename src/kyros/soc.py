@@ -7,7 +7,7 @@ from pathlib import PurePath
 from typing import Any
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
-DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[A-Za-z]{2,63}$")
+DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[A-Za-z]{2,63}$")
 
 
 def classify_ip(value: str) -> dict[str, Any]:
@@ -52,11 +52,11 @@ def classify_domain(value: str) -> dict[str, Any]:
 
 def _file_type(data: bytes) -> str:
     signatures = [
-        (b"\\x7fELF", "ELF executable"),
+        (b"\x7fELF", "ELF executable"),
         (b"MZ", "Windows PE/DOS executable (signature only)"),
-        (b"PK\\x03\\x04", "ZIP archive"), (b"%PDF-", "PDF document"),
-        (b"\\x1f\\x8b", "GZIP archive"), (b"\\x89PNG\\r\\n\\x1a\\n", "PNG image"),
-        (b"\\xff\\xd8\\xff", "JPEG image"), (b"SQLite format 3\\x00", "SQLite database"),
+        (b"PK\x03\x04", "ZIP archive"), (b"%PDF-", "PDF document"),
+        (b"\x1f\x8b", "GZIP archive"), (b"\x89PNG\\r\\n\x1a\\n", "PNG image"),
+        (b"\xff\xd8\xff", "JPEG image"), (b"SQLite format 3\x00", "SQLite database"),
     ]
     for signature, label in signatures:
         if data.startswith(signature):
