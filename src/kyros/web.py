@@ -19,7 +19,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 security = HTTPBasic(auto_error=False)
 
 
-def require_auth(credentials: HTTPBasicCredentials | None = Depends(security)) -> str:
+def require_auth(\n    request: Request, credentials: HTTPBasicCredentials | None = Depends(security)\n) -> str:
     """Require configured HTTP Basic credentials for every application route."""
     expected_user = os.getenv("KYROS_AUTH_USERNAME", "")
     expected_password = os.getenv("KYROS_AUTH_PASSWORD", "")
