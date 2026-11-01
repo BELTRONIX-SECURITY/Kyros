@@ -53,6 +53,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Cache-Control"] = "no-store"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
@@ -66,7 +67,6 @@ app = FastAPI(
     docs_url=None if is_production else "/docs",
     redoc_url=None if is_production else "/redoc",
     openapi_url=None if is_production else "/openapi.json",
-    dependencies=[Depends(require_auth)],
 )
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -80,7 +80,7 @@ async def health():
     return {"status": "ok", "service": "Kyros SOC", "version": "0.3.0"}
 
 
-@app.post("/api/analyze/ip")
+@app.post("/api/analyze/ip", dependencies=[Depends(require_auth)])
 async def analyze_ip(request: IndicatorRequest):
     try:
         result = classify_ip(request.indicator)
@@ -90,7 +90,7 @@ async def analyze_ip(request: IndicatorRequest):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/domain")
+@app.post("/api/analyze/domain", dependencies=[Depends(require_auth)])
 async def analyze_domain(request: IndicatorRequest):
     try:
         result = classify_domain(request.indicator)
@@ -100,7 +100,7 @@ async def analyze_domain(request: IndicatorRequest):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/file")
+@app.post("/api/analyze/file", dependencies=[Depends(require_auth)])
 async def analyze_uploaded_file(file: UploadFile = File(...)):
     data = await file.read(MAX_FILE_SIZE + 1)
     await file.close()
@@ -114,12 +114,12 @@ async def analyze_uploaded_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.get("/api/history")
+@app.get("/api/history", dependencies=[Depends(require_auth)])
 async def history(limit: int = 50):
     return {"items": list_analyses(limit)}
 
 
-@app.get("/", include_in_schema=False)
+@app.get("/", include_in_schema=False, dependencies=[Depends(require_auth)])
 async def dashboard():
     index = STATIC_DIR / "index.html"
     if not index.is_file():
