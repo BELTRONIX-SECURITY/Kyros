@@ -55,6 +55,7 @@ No introduzcas datos de pago para esta configuración. Si Render muestra un cost
 - Resumen general: contadores de análisis, actividad de las últimas 24 horas y distribución por tipo/severidad.
 - IP Intelligence: clasificación local IPv4/IPv6 y enriquecimiento geográfico/ASN opt-in para IP públicas.
 - Domain Intelligence: validación local del formato. DNS, SPF, DKIM, DMARC y reputación todavía no están habilitados en la interfaz web.
+- Email Intelligence: validación local de sintaxis y normalización del dominio, sin consultar ni transmitir la dirección.
 - File Intelligence: tamaño, tipo por firma y hashes SHA-256/SHA-1/MD5; límite de 10 MB; sin ejecución ni envío externo.
 - Incident Center: creación manual de casos, severidad y estados abierto/reconocido/cerrado.
 - Historial: consulta de análisis y métricas sobre SQLite.
