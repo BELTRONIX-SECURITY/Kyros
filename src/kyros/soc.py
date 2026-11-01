@@ -55,7 +55,7 @@ def _file_type(data: bytes) -> str:
         (b"\x7fELF", "ELF executable"),
         (b"MZ", "Windows PE/DOS executable (signature only)"),
         (b"PK\x03\x04", "ZIP archive"), (b"%PDF-", "PDF document"),
-        (b"\x1f\x8b", "GZIP archive"), (b"\x89PNG\\r\\n\x1a\\n", "PNG image"),
+        (b"\x1f\x8b", "GZIP archive"), (b"\x89PNG\r\n\x1a\n", "PNG image"),
         (b"\xff\xd8\xff", "JPEG image"), (b"SQLite format 3\x00", "SQLite database"),
     ]
     for signature, label in signatures:
