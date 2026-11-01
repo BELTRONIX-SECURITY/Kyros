@@ -50,19 +50,25 @@ Esta rama está preparada para una **prueba con el plan Free** de Render. No inc
 
 No introduzcas datos de pago para esta configuración. Si Render muestra un coste o exige cambiar a un plan de pago, detente y revisa la pantalla antes de continuar.
 
-## Seguridad incluida en esta fase
+## Seguridad y fuentes externas
 
 - Autenticación HTTP Basic obligatoria en dashboard y endpoints API.
 - La aplicación falla de forma cerrada (503) si las credenciales no están configuradas o la contraseña tiene menos de 16 caracteres.
 - Comparación de credenciales con comparación de tiempo constante.
-- Cabeceras de seguridad: nosniff, frame deny, referrer policy, permissions policy y HSTS en HTTPS.
-- Documentación interactiva y OpenAPI deshabilitados en producción.
-- Límite de carga de 10 MB; el archivo se procesa en memoria y no se guarda.
-- Historial SQLite conserva indicadores, hashes y metadatos, no el contenido del archivo ni su nombre original.
-- Consultas externas desactivadas: no se envían indicadores o archivos a terceros.
+- Cabeceras de seguridad y documentación interactiva deshabilitada en producción.
+- Límite de carga de 10 MB; los archivos se procesan en memoria, no se ejecutan ni se envían a terceros.
+- El historial conserva hashes y metadatos, no el contenido del archivo ni su nombre original.
+- Las consultas externas de IP requieren marcar expresamente la casilla de consentimiento. Por defecto siguen desactivadas.
+- Si se autoriza la consulta, solo se envía la IP pública indicada a ipapi.co y FreeIPAPI para obtener datos geográficos y ASN. Las IP privadas y especiales no se envían.
+- Los proveedores externos reciben la IP consultada y pueden procesar solicitudes conforme a sus propias políticas, condiciones y límites. No se envían archivos, credenciales ni datos del historial.
+- Geolocalización y ASN no equivalen a reputación ni demuestran actividad maliciosa. La puntuación de riesgo permanece sin determinar.
+
+Documentación de proveedores:
+- ipapi.co: https://ipapi.co/api/
+- FreeIPAPI: https://app.freeipapi.com/docs/api-reference/get-ip-info
 
 ## Límites y medidas adicionales antes de usar con datos reales
 
 HTTP Basic protege el acceso solo cuando se utiliza sobre HTTPS. Para una plataforma expuesta a Internet con varios usuarios, añade un proveedor de identidad/SSO, limitación de intentos en el perímetro, gestión de usuarios y auditoría. No reutilices contraseñas personales. La autenticación HTTP Basic del prototipo no ofrece cuentas individuales, MFA ni cierre de sesión centralizado.
 
-Esta versión no incorpora todavía reputación externa, DNS, YARA, ClamAV, sandbox, correlación SIEM, gestión de incidentes ni alertas en tiempo real. No subas muestras confidenciales ni datos personales hasta completar una revisión de seguridad y pruebas de despliegue. Un indicador válido o desconocido no demuestra por sí solo un ataque activo.
+Esta versión todavía no incorpora reputación de amenazas, listas de abuso, DNS, YARA, ClamAV, sandbox, correlación SIEM, gestión de incidentes ni alertas en tiempo real. No subas muestras confidenciales ni datos personales hasta completar una revisión de seguridad y pruebas de despliegue. Un indicador válido o desconocido no demuestra por sí solo un ataque activo.
