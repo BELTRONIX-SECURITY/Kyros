@@ -73,7 +73,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 
 <section class="page" id="page-domain">
 <div class="page-head"><div><div class="eyebrow">Indicator analysis</div><h1>Domain Intelligence</h1><div class="muted">Validación local del formato de dominios.</div></div></div>
-<div class="panel"><div class="field"><label>Nombre de dominio</label><input id="domain" placeholder="Ej. example.com"></div><button class="btn" onclick="analyzeIndicator('domain')">Analizar dominio</button><pre class="output" id="domain-output">Introduce un dominio sin URL ni ruta.</pre></div>
+<div class="panel"><div class="field"><label>Nombre de dominio</label><input id="domain" placeholder="Ej. example.com"></div><label class="check"><input id="domain-external" type="checkbox"><span>Autorizar consultas DNS para A, AAAA, MX, TXT y _dmarc. El dominio será enviado al resolvedor DNS configurado.</span></label><button class="btn" onclick="analyzeIndicator('domain')">Analizar dominio</button><pre class="output" id="domain-output">Introduce un dominio sin URL ni ruta.</pre></div>
 <div class="note">La consulta DNS, SPF, DKIM, DMARC y reputación de dominios aún no están habilitadas en esta versión. No se transmite el dominio a terceros.</div>
 </section>
 
