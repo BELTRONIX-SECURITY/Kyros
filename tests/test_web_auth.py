@@ -59,3 +59,14 @@ def test_weak_password_configuration_fails_closed(monkeypatch):
     monkeypatch.setenv("KYROS_AUTH_PASSWORD", "too-short")
     response = client.get("/", auth=("soc-admin", "too-short"))
     assert response.status_code == 503
+
+
+def test_api_rejects_cross_site_style_post_without_custom_header(monkeypatch):
+    monkeypatch.setenv("KYROS_AUTH_USERNAME", "soc-admin")
+    monkeypatch.setenv("KYROS_AUTH_PASSWORD", "a-strong-test-password-123")
+    response = client.post(
+        "/api/analyze/ip",
+        json={"indicator": "8.8.8.8"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 403
