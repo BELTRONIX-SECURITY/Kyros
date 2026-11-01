@@ -1,23 +1,84 @@
 """FastAPI application for the Kyros SOC web interface."""
 from __future__ import annotations
+
 import os
+import secrets
 from pathlib import Path
-from fastapi import FastAPI, File, HTTPException, UploadFile
+
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
 from kyros.database import list_analyses, save_analysis
 from kyros.soc import MAX_FILE_SIZE, analyze_file, classify_domain, classify_ip
 
 STATIC_DIR = Path(__file__).parent / "static"
-app = FastAPI(title="Kyros SOC API", version="0.2.0",
-              description="Local-first defensive triage API. External lookups are disabled.")
+security = HTTPBasic(auto_error=False)
+
+
+def require_auth(credentials: HTTPBasicCredentials | None = Depends(security)) -> str:
+    """Require configured HTTP Basic credentials for every application route."""
+    expected_user = os.getenv("KYROS_AUTH_USERNAME", "")
+    expected_password = os.getenv("KYROS_AUTH_PASSWORD", "")
+    if not expected_user or len(expected_password) < 16:
+        raise HTTPException(
+            status_code=503,
+            detail="La autenticación no está configurada correctamente.",
+        )
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Autenticación requerida.",
+            headers={"WWW-Authenticate": 'Basic realm="Kyros SOC", charset="UTF-8"'},
+        )
+    user_ok = secrets.compare_digest(credentials.username, expected_user)
+    password_ok = secrets.compare_digest(credentials.password, expected_password)
+    if not (user_ok and password_ok):
+        raise HTTPException(
+            status_code=401,
+            detail="Credenciales incorrectas.",
+            headers={"WWW-Authenticate": 'Basic realm="Kyros SOC", charset="UTF-8"'},
+        )
+    return credentials.username
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Cache-Control"] = "no-store"
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+is_production = os.getenv("KYROS_ENV", "development").lower() == "production"
+app = FastAPI(
+    title="Kyros SOC API",
+    version="0.3.0",
+    description="Defensive triage API. External lookups are disabled.",
+    docs_url=None if is_production else "/docs",
+    redoc_url=None if is_production else "/redoc",
+    openapi_url=None if is_production else "/openapi.json",
+    dependencies=[Depends(require_auth)],
+)
+app.add_middleware(SecurityHeadersMiddleware)
+
 
 class IndicatorRequest(BaseModel):
     indicator: str = Field(min_length=1, max_length=253)
 
+
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "Kyros SOC", "version": "0.2.0"}
+    return {"status": "ok", "service": "Kyros SOC", "version": "0.3.0"}
+
 
 @app.post("/api/analyze/ip")
 async def analyze_ip(request: IndicatorRequest):
@@ -28,6 +89,7 @@ async def analyze_ip(request: IndicatorRequest):
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+
 @app.post("/api/analyze/domain")
 async def analyze_domain(request: IndicatorRequest):
     try:
@@ -36,6 +98,7 @@ async def analyze_domain(request: IndicatorRequest):
         return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
 
 @app.post("/api/analyze/file")
 async def analyze_uploaded_file(file: UploadFile = File(...)):
@@ -50,9 +113,11 @@ async def analyze_uploaded_file(file: UploadFile = File(...)):
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+
 @app.get("/api/history")
 async def history(limit: int = 50):
     return {"items": list_analyses(limit)}
+
 
 @app.get("/", include_in_schema=False)
 async def dashboard():
@@ -61,7 +126,13 @@ async def dashboard():
         raise HTTPException(status_code=404, detail="Dashboard no disponible.")
     return FileResponse(index)
 
+
 def run() -> None:
     import uvicorn
-    uvicorn.run("kyros.web:app", host=os.getenv("KYROS_HOST", "127.0.0.1"),
-                port=int(os.getenv("KYROS_PORT", "8000")), reload=False)
+
+    uvicorn.run(
+        "kyros.web:app",
+        host=os.getenv("KYROS_HOST", "127.0.0.1"),
+        port=int(os.getenv("KYROS_PORT", "8000")),
+        reload=False,
+    )
