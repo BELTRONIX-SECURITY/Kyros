@@ -233,3 +233,28 @@ def test_domain_dns_requires_explicit_opt_in(monkeypatch, tmp_path):
     assert external.status_code == 200
     assert calls == ["example.com"]
     assert external.json()["dns"]["records"]["A"] == ["192.0.2.10"]
+
+
+def test_local_threat_intel_and_event_correlation(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    auth = ("soc-admin", "a-strong-test-password-123")
+    headers = {"X-Kyros-Request": "1"}
+    ioc = client.post(
+        "/api/threat-intel/indicators",
+        json={"indicator_type": "ip", "indicator": "203.0.113.7",
+              "confidence": 70, "source": "internal-test", "description": "Test IOC"},
+        headers=headers, auth=auth,
+    )
+    assert ioc.status_code == 200
+    event = client.post(
+        "/api/events",
+        json={"source": "test-sensor", "event_type": "connection",
+              "indicator": "203.0.113.7", "severity": "medium"},
+        headers=headers, auth=auth,
+    )
+    assert event.status_code == 200
+    correlated = client.get("/api/correlation", auth=auth)
+    assert correlated.status_code == 200
+    assert correlated.json()["items"][0]["threat_match"]["indicator"] == "203.0.113.7"
+    assert correlated.json()["items"][0]["incident_confirmed"] is False
