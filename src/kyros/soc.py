@@ -16,12 +16,12 @@ def classify_ip(value: str) -> dict[str, Any]:
         raise ValueError("La dirección IP no tiene un formato válido.") from exc
     if address.is_global:
         scope, note = "public", "IP pública; esto no determina actividad maliciosa."
-    elif address.is_private:
-        scope, note = "private", "IP privada; normalmente pertenece a una red interna."
     elif address.is_loopback:
         scope, note = "loopback", "Dirección de bucle local."
     elif address.is_link_local:
         scope, note = "link-local", "Dirección de enlace local."
+    elif address.is_private:
+        scope, note = "private", "IP privada; normalmente pertenece a una red interna."
     else:
         scope, note = "special", "Dirección reservada o de uso especial."
     return {"indicator": str(address), "type": f"IPv{address.version}", "scope": scope,
