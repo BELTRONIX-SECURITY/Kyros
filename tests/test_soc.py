@@ -54,3 +54,11 @@ def test_invalid_email(value):
 def test_png_signature_detection():
     result = analyze_file(bytes([137, 80, 78, 71, 13, 10, 26, 10]) + b"content", "image.png")
     assert result["file_type"] == "PNG image"
+
+
+def test_yara_reports_not_configured_without_external_submission(monkeypatch):
+    monkeypatch.delenv("KYROS_YARA_RULES", raising=False)
+    from kyros.soc import scan_yara
+    result = scan_yara(b"sample bytes")
+    assert result["status"] == "not_configured"
+    assert result["matches"] == []
