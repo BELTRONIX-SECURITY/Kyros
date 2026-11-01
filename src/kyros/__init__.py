@@ -1,1 +1,3 @@
-"""Kyros security operations toolkit."""\n\n__version__ = "0.5.0"\n
+"""Kyros security operations toolkit."""
+
+__version__ = "0.5.0"
