@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.env
+
+# Nunca subas tus claves ni tus informes
+config.yaml
+.kyros.yaml
+*.report.json

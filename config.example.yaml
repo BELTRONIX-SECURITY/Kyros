@@ -1,0 +1,6 @@
+# Copia este archivo a ~/.kyros.yaml (o usa --config ruta.yaml)
+# También puedes usar variables de entorno: KYROS_HUNTER_KEY, KYROS_EMAILREP_KEY, KYROS_HIBP_KEY
+keys:
+  hunter: ""      # https://hunter.io  (correos relacionados del dominio)
+  emailrep: ""    # https://emailrep.io (opcional: sin clave tiene límites bajos)
+  hibp: ""        # https://haveibeenpwned.com/API/Key (filtraciones)
