@@ -2,42 +2,61 @@
 
 Esta rama incorpora una primera interfaz web y API defensiva, manteniendo la CLI OSINT original.
 
-## Requisitos
-Python 3.10 o superior.
+## Ejecución local
 
-## Instalación y ejecución
-En Linux/macOS:
-    python -m venv .venv
-    source .venv/bin/activate
-En Windows PowerShell:
-    python -m venv .venv
-    .venv\Scripts\Activate.ps1
+Requisitos: Python 3.10 o superior.
 
-Instala y ejecuta:
-    pip install -e ".[dev]"
-    kyros-web
+```bash
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows PowerShell: .venv\\Scripts\\Activate.ps1
+pip install -e ".[dev]"
+```
 
-Abre http://127.0.0.1:8000. La documentación interactiva de la API está en http://127.0.0.1:8000/docs.
+Configura credenciales antes de iniciar la aplicación. La contraseña debe tener al menos 16 caracteres.
 
-## Funciones incluidas
-- Dashboard web adaptable.
-- API FastAPI y endpoint de estado.
-- Clasificación sintáctica de IPv4/IPv6 (pública, privada y especial).
-- Validación y normalización IDNA de dominios.
-- Triaje estático: hashes MD5/SHA1/SHA256 y firmas básicas de archivo.
-- Límite de carga de 10 MB; el contenido del archivo se procesa en memoria y no se guarda.
-- Historial local SQLite para indicadores, hashes y metadatos de análisis; no se conserva el contenido del archivo ni su nombre original.
-- Consultas externas desactivadas; no se envían indicadores o archivos a terceros.
-- Ruta de base de datos configurable con KYROS_DB_PATH; por defecto ~/.kyros/kyros_soc.sqlite3.
+Linux/macOS:
+```bash
+export KYROS_AUTH_USERNAME="admin"
+export KYROS_AUTH_PASSWORD="cambia-esta-por-una-clave-larga"
+kyros-web
+```
 
-## Límites importantes
-No se incorpora todavía reputación externa, DNS, YARA, ClamAV, sandbox, correlación SIEM, gestión de incidentes, autenticación multiusuario ni alertas en tiempo real. Un resultado unknown significa que no existe evidencia suficiente para asignar reputación. Una IP o dominio no confirma por sí solo un ataque activo.
+Windows PowerShell:
+```powershell
+$env:KYROS_AUTH_USERNAME = "admin"
+$env:KYROS_AUTH_PASSWORD = "cambia-esta-por-una-clave-larga"
+kyros-web
+```
 
-La API escucha por defecto en 127.0.0.1. No la expongas a Internet ni a una red compartida sin añadir autenticación, autorización, TLS, controles de abuso y revisión de seguridad. La base de datos local contiene indicadores consultados, por lo que debe protegerse con los permisos del sistema operativo.
+Abre http://127.0.0.1:8000. El navegador solicitará autenticación HTTP Basic. En desarrollo, la documentación está en /docs.
 
-## Próximos incrementos
-1. Motor de análisis estático ampliado con YARA/ClamAV, ejecutado en entorno aislado.
-2. Fuentes opcionales de Threat Intelligence, habilitadas explícitamente y con controles de privacidad.
-3. Ingesta y correlación de eventos Wazuh/SIEM.
-4. Centro de incidentes, auditoría, roles y controles de acceso.
-5. Endurecimiento, pruebas de integración y despliegue controlado.
+## Despliegue público protegido en Render
+
+Existe un archivo `render.yaml` para desplegar desde la rama `security/private-deploy`.
+
+1. Crea una cuenta Render y conecta GitHub.
+2. En Render, crea un Blueprint y selecciona este repositorio y la rama `security/private-deploy`.
+3. Render detectará `render.yaml`. Configura `KYROS_AUTH_USERNAME` y `KYROS_AUTH_PASSWORD` como secretos. Usa una contraseña aleatoria de al menos 20 caracteres; no la guardes en GitHub.
+4. Despliega el servicio y prueba la URL HTTPS. El navegador debe solicitar credenciales antes de mostrar el dashboard.
+5. Mantén el disco persistente asociado al servicio para conservar el historial SQLite.
+
+El servicio usa HTTPS administrado por Render, escucha en 0.0.0.0 mediante el comando de inicio y guarda la base SQLite en /var/data. El plan configurado requiere un servicio con disco persistente; revisa el precio vigente de Render antes de crear recursos.
+
+## Seguridad incluida en esta fase
+
+- Autenticación HTTP Basic obligatoria en dashboard y endpoints API.
+- La aplicación falla de forma cerrada (503) si las credenciales no están configuradas o la contraseña tiene menos de 16 caracteres.
+- Comparación de credenciales con comparación de tiempo constante.
+- Cabeceras de seguridad: nosniff, frame deny, referrer policy, permissions policy y HSTS en HTTPS.
+- Documentación interactiva y OpenAPI deshabilitados en producción.
+- Límite de carga de 10 MB; el archivo se procesa en memoria y no se guarda.
+- Historial SQLite conserva indicadores, hashes y metadatos, no el contenido del archivo ni su nombre original.
+- Consultas externas desactivadas: no se envían indicadores o archivos a terceros.
+
+## Límites y medidas adicionales antes de usar con datos reales
+
+HTTP Basic protege el acceso solo cuando se utiliza sobre HTTPS. Para una plataforma expuesta a Internet con varios usuarios, añade un proveedor de identidad/SSO como Cloudflare Access, limitación de intentos en el perímetro, gestión de usuarios y auditoría. No reutilices contraseñas personales. La autenticación HTTP Basic del prototipo no ofrece cuentas individuales, MFA ni cierre de sesión centralizado.
+
+Esta versión no incorpora todavía reputación externa, DNS, YARA, ClamAV, sandbox, correlación SIEM, gestión de incidentes ni alertas en tiempo real. No subas muestras confidenciales ni datos personales hasta completar una revisión de seguridad y pruebas de despliegue. Un indicador válido o desconocido no demuestra por sí solo un ataque activo.
