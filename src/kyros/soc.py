@@ -50,7 +50,7 @@ def classify_domain(value: str) -> dict[str, Any]:
     }
 
 
-def _ooxml_analysis(data: bytes) -> dict[str, Any] | None:
+def _ooxml_analysis(data: bytes, filename: str | None = None) -> dict[str, Any] | None:
     """Identify and inspect Office Open XML containers without extracting or executing them."""
     import io
     import zipfile
@@ -107,6 +107,8 @@ def _ooxml_analysis(data: bytes) -> dict[str, Any] | None:
                     "formulas_present": formulas > 0,
                     "formula_count_approx": formulas if family == "Microsoft Excel" else None,
                     "macro_project_present": has_macros, "external_link_parts": len(extlinks),
+                    "expected_extension": "." + extension.lower(),
+                    "extension_matches_structure": not filename or PurePath(filename).suffix.lower() == "." + extension.lower(),
                     "inspection": "static_only",
                     "note": "Macros, fórmulas o enlaces externos son datos estructurales; no demuestran actividad maliciosa."
                 }
@@ -117,7 +119,7 @@ def _ooxml_analysis(data: bytes) -> dict[str, Any] | None:
 
 
 def _file_type(data: bytes, filename: str | None = None) -> tuple[str, dict[str, Any] | None]:
-    ooxml = _ooxml_analysis(data)
+    ooxml = _ooxml_analysis(data, filename)
     if ooxml:
         return ooxml["file_type"], ooxml.get("structure")
     signatures = [
