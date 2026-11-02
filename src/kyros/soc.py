@@ -305,7 +305,7 @@ def extract_document_text(data: bytes, filename: str | None = None) -> dict[str,
                                   if node.tag.rsplit("}", 1)[-1] == "t")
                     if sum(map(len, chunks)) >= 200_000:
                         break
-            extracted = "\\n".join(chunks)[:200_000]
+            extracted = "\n".join(chunks)[:200_000]
             return {"supported": True, "text": extracted,
                     "reason": "Contenido Office extraído localmente; macros y fórmulas no se ejecutan."}
     except (OSError, ValueError, KeyError, zipfile.BadZipFile, ET.ParseError) as exc:
