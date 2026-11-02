@@ -252,29 +252,77 @@ IOC_SHA256_RE = re.compile(r"(?i)\b[a-f0-9]{64}\b")
 IOC_DOMAIN_RE = re.compile(r"(?i)(?<![@\w.-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?![\w.-])")
 
 
-def extract_ioc_candidates(data: bytes, filename: str | None = None) -> dict[str, Any]:
-    """Extract review-only IOC candidates from small UTF-8 text files; never execute or auto-import."""
+def extract_document_text(data: bytes, filename: str | None = None) -> dict[str, Any]:
+    """Extract bounded text from supported plain-text and Office Open XML documents locally."""
+    import io
+    import zipfile
+    import xml.etree.ElementTree as ET
+
     suffix = PurePath(filename or "").suffix.lower()
-    if suffix not in TEXT_IOC_EXTENSIONS:
-        return {
-            "supported_for_text_extraction": False,
-            "reason": "El formato se recibió y se calculó su hash, pero no se extrae texto automáticamente.",
-            "candidates": [],
-        }
     if len(data) > 2 * 1024 * 1024:
-        return {
-            "supported_for_text_extraction": False,
-            "reason": "El archivo supera 2 MB para extracción de texto; el análisis de hash sí está disponible.",
-            "candidates": [],
-        }
+        return {"supported": False, "text": "", "reason": "La extracción está limitada a 2 MB."}
+    if suffix in TEXT_IOC_EXTENSIONS:
+        try:
+            return {"supported": True, "text": data.decode("utf-8-sig")[:200_000],
+                    "reason": "Texto UTF-8 extraído localmente."}
+        except UnicodeDecodeError:
+            return {"supported": False, "text": "", "reason": "El archivo no es texto UTF-8 válido."}
+    if suffix not in {".xlsx", ".xlsm", ".docx", ".docm", ".pptx", ".pptm"}:
+        return {"supported": False, "text": "", "reason": "Formato aún no compatible con extracción de texto."}
     try:
-        content = data.decode("utf-8-sig")
-    except UnicodeDecodeError:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            entries = archive.infolist()
+            if (len(entries) > 2000 or sum(x.file_size for x in entries) > 40 * 1024 * 1024
+                    or any(x.file_size > 8 * 1024 * 1024 for x in entries)):
+                return {"supported": False, "text": "", "reason": "Contenedor Office supera los límites de inspección."}
+            chunks: list[str] = []
+            if suffix in {".xlsx", ".xlsm"}:
+                from openpyxl import load_workbook
+                workbook = load_workbook(io.BytesIO(data), read_only=True, data_only=False)
+                try:
+                    for sheet in workbook.worksheets[:100]:
+                        chunks.append(f"[Hoja: {sheet.title}]")
+                        for row in sheet.iter_rows():
+                            values = [str(cell.value) for cell in row if cell.value is not None]
+                            if values:
+                                chunks.append(" | ".join(values))
+                            if sum(map(len, chunks)) >= 200_000:
+                                break
+                        if sum(map(len, chunks)) >= 200_000:
+                            break
+                finally:
+                    workbook.close()
+            else:
+                wanted = ("word/document.xml",) if suffix in {".docx", ".docm"} else tuple(
+                    name for name in archive.namelist()
+                    if name.startswith("ppt/slides/slide") and name.endswith(".xml")
+                )
+                for name in wanted:
+                    if name not in archive.namelist():
+                        continue
+                    root = ET.fromstring(archive.read(name))
+                    chunks.extend(node.text or "" for node in root.iter()
+                                  if node.tag.rsplit("}", 1)[-1] == "t")
+                    if sum(map(len, chunks)) >= 200_000:
+                        break
+            extracted = "\\n".join(chunks)[:200_000]
+            return {"supported": True, "text": extracted,
+                    "reason": "Contenido Office extraído localmente; macros y fórmulas no se ejecutan."}
+    except (OSError, ValueError, KeyError, zipfile.BadZipFile, ET.ParseError) as exc:
+        return {"supported": False, "text": "", "reason": f"No se pudo extraer el documento ({type(exc).__name__})."}
+
+
+def extract_ioc_candidates(data: bytes, filename: str | None = None) -> dict[str, Any]:
+    """Extract review-only IOC candidates from supported files; never execute or auto-import."""
+    extracted = extract_document_text(data, filename)
+    if not extracted["supported"]:
         return {
             "supported_for_text_extraction": False,
-            "reason": "El archivo no es texto UTF-8 válido; se conserva únicamente el análisis estático y los hashes.",
+            "reason": extracted["reason"],
             "candidates": [],
+            "extracted_text": "",
         }
+    content = extracted["text"]
 
     candidates: dict[tuple[str, str], dict[str, Any]] = {}
 
@@ -309,7 +357,8 @@ def extract_ioc_candidates(data: bytes, filename: str | None = None) -> dict[str
 
     return {
         "supported_for_text_extraction": True,
-        "reason": "Candidatos extraídos localmente; revisa el contexto antes de incorporarlos al catálogo IOC.",
+        "reason": extracted["reason"] + " IOC extraídos localmente; revisa el contexto antes de incorporarlos al catálogo.",
         "candidates": list(candidates.values()),
+        "extracted_text": content[:200_000],
         "truncated": len(candidates) >= 500,
     }
