@@ -82,6 +82,7 @@ def test_xlsx_is_identified_and_inspected_without_execution():
     assert result["structure"]["valid_ooxml"] is True
     assert result["structure"]["sheet_count"] == 1
     assert result["structure"]["formulas_present"] is True
+    assert result["structure"]["formula_count"] == 1
     assert result["structure"]["extension_matches_structure"] is True
     assert result["execution_performed"] is False
     assert result["external_submission"] is False
@@ -102,3 +103,21 @@ def test_invalid_zip_is_not_misidentified_as_excel():
     result = analyze_file(bytes([0x50, 0x4b, 0x03, 0x04]) + b"not-a-valid-zip", "archivo.xlsx")
     assert result["file_type"] == "ZIP archive (contenedor no válido)"
     assert result["structure"]["valid_ooxml"] is False
+
+
+
+def test_office_zip_expansion_limits_are_enforced():
+    from io import BytesIO
+    from zipfile import ZIP_STORED, ZipFile
+
+    stream = BytesIO()
+    with ZipFile(stream, "w", compression=ZIP_STORED) as archive:
+        archive.writestr("[Content_Types].xml", "<Types/>")
+        archive.writestr("xl/workbook.xml", "<workbook/>")
+        archive.writestr("padding.bin", b"A" * (9 * 1024 * 1024))
+
+    result = analyze_file(stream.getvalue(), "large.xlsx")
+    assert result["structure"]["inspection"] == "resource_limit"
+    assert result["risk"] == "unknown"
+    assert result["execution_performed"] is False
+    assert result["external_submission"] is False
