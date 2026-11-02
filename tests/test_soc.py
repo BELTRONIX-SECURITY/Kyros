@@ -62,3 +62,43 @@ def test_yara_reports_not_configured_without_external_submission(monkeypatch):
     result = scan_yara(b"sample bytes")
     assert result["status"] == "not_configured"
     assert result["matches"] == []
+
+
+def test_xlsx_is_identified_and_inspected_without_execution():
+    from io import BytesIO
+    from openpyxl import Workbook
+
+    stream = BytesIO()
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Alertas"
+    sheet["A1"] = "Indicador"
+    sheet["A2"] = "8.8.8.8"
+    sheet["B2"] = "=1+1"
+    workbook.save(stream)
+
+    result = analyze_file(stream.getvalue(), "alertas.xlsx")
+    assert result["file_type"] == "Microsoft Excel (XLSX)"
+    assert result["structure"]["valid_ooxml"] is True
+    assert result["structure"]["sheet_count"] == 1
+    assert result["structure"]["formulas_present"] is True
+    assert result["structure"]["extension_matches_structure"] is True
+    assert result["execution_performed"] is False
+    assert result["external_submission"] is False
+
+
+def test_xlsx_extension_mismatch_is_reported():
+    from io import BytesIO
+    from openpyxl import Workbook
+
+    stream = BytesIO()
+    Workbook().save(stream)
+    result = analyze_file(stream.getvalue(), "documento.docx")
+    assert result["file_type"] == "Microsoft Excel (XLSX)"
+    assert result["structure"]["extension_matches_structure"] is False
+
+
+def test_invalid_zip_is_not_misidentified_as_excel():
+    result = analyze_file(b"PK\\x03\\x04not-a-valid-zip", "archivo.xlsx")
+    assert result["file_type"] == "ZIP archive (contenedor no válido)"
+    assert result["structure"]["valid_ooxml"] is False
