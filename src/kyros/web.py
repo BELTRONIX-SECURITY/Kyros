@@ -25,7 +25,8 @@ from kyros.database import (
     dashboard_summary, list_analyses, list_incidents, list_security_events, list_threat_indicators,
     save_analysis, update_incident_status,
 )
-from kyros.soc import (MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip,\n                      extract_ioc_candidates, scan_yara)
+from kyros.soc import (MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip,
+                      extract_ioc_candidates, scan_yara)
 
 STATIC_DIR = Path(__file__).parent / "static"
 security = HTTPBasic(auto_error=False)
