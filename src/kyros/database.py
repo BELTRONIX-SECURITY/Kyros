@@ -54,6 +54,22 @@ def initialize() -> None:
                 severity TEXT NOT NULL, details TEXT NOT NULL
             )
         """)
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS incident_timeline (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, incident_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL, event_time TEXT, category TEXT NOT NULL,
+                description TEXT NOT NULL, source TEXT NOT NULL,
+                FOREIGN KEY (incident_id) REFERENCES incidents(id)
+            )
+        """)
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS incident_evidence (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, incident_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL, evidence_type TEXT NOT NULL,
+                reference TEXT NOT NULL, sha256 TEXT NOT NULL, source TEXT NOT NULL,
+                notes TEXT NOT NULL, FOREIGN KEY (incident_id) REFERENCES incidents(id)
+            )
+        """)
         connection.commit()
 
 
@@ -227,3 +243,63 @@ def dashboard_summary() -> dict[str, Any]:
         "incidents_by_severity": severity,
         "risk_assessment": "not_determined_without_correlated_telemetry",
     }
+
+
+def add_incident_timeline(incident_id: int, category: str, description: str,
+                          source: str, event_time: str = "") -> int | None:
+    """Append a manually supplied case timeline entry."""
+    initialize()
+    now = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(database_path()) as connection:
+        exists = connection.execute("SELECT 1 FROM incidents WHERE id = ?", (incident_id,)).fetchone()
+        if not exists:
+            return None
+        cursor = connection.execute(
+            """INSERT INTO incident_timeline
+            (incident_id, created_at, event_time, category, description, source)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (incident_id, now, event_time[:40], category[:60], description[:2000], source[:100]),
+        )
+        connection.execute("UPDATE incidents SET updated_at = ? WHERE id = ?", (now, incident_id))
+        connection.commit()
+        return int(cursor.lastrowid)
+
+
+def add_incident_evidence(incident_id: int, evidence_type: str, reference: str,
+                          sha256: str, source: str, notes: str) -> int | None:
+    """Store metadata and references only; evidence bytes are never stored."""
+    initialize()
+    now = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(database_path()) as connection:
+        exists = connection.execute("SELECT 1 FROM incidents WHERE id = ?", (incident_id,)).fetchone()
+        if not exists:
+            return None
+        cursor = connection.execute(
+            """INSERT INTO incident_evidence
+            (incident_id, created_at, evidence_type, reference, sha256, source, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (incident_id, now, evidence_type[:40], reference[:500], sha256[:64].lower(),
+             source[:100], notes[:2000]),
+        )
+        connection.execute("UPDATE incidents SET updated_at = ? WHERE id = ?", (now, incident_id))
+        connection.commit()
+        return int(cursor.lastrowid)
+
+
+def get_incident_case(incident_id: int) -> dict[str, Any] | None:
+    initialize()
+    with sqlite3.connect(database_path()) as connection:
+        connection.row_factory = sqlite3.Row
+        incident = connection.execute("SELECT * FROM incidents WHERE id = ?", (incident_id,)).fetchone()
+        if not incident:
+            return None
+        timeline = connection.execute(
+            "SELECT * FROM incident_timeline WHERE incident_id = ? ORDER BY COALESCE(event_time, created_at), id",
+            (incident_id,),
+        ).fetchall()
+        evidence = connection.execute(
+            "SELECT * FROM incident_evidence WHERE incident_id = ? ORDER BY id DESC",
+            (incident_id,),
+        ).fetchall()
+    return {"incident": dict(incident), "timeline": [dict(row) for row in timeline],
+            "evidence": [dict(row) for row in evidence]}
