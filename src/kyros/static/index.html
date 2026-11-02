@@ -25,7 +25,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 .empty{color:#788ba6;text-align:center;padding:24px;font-size:12px}.section-title{margin:24px 0 13px;font-size:14px}
 @media(max-width:1050px){.metrics{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.three{grid-template-columns:1fr 1fr}}
 @media(max-width:720px){.layout{grid-template-columns:1fr}.sidebar{position:relative;height:auto;padding:12px}.brand{padding:4px 8px 12px}.side-label,.sidebar-foot{display:none}.nav-wrap{display:flex;overflow:auto;gap:4px}.nav{white-space:nowrap;width:auto;padding:9px}.topbar{height:50px;padding:0 18px}.content{padding:22px 16px}.page-head{display:block}.metrics{grid-template-columns:1fr 1fr}.three,.form-grid{grid-template-columns:1fr}.activity{min-width:560px}.table-wrap{overflow:auto}}
-.candidate-list{margin-top:14px}.candidate-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin:8px 0}.candidate-row .muted{font-size:12px;margin-top:3px}@media(max-width:640px){.candidate-row{align-items:flex-start;flex-direction:column}}
+.admin-only{display:none!important}.candidate-list{margin-top:14px}.candidate-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin:8px 0}.candidate-row .muted{font-size:12px;margin-top:3px}@media(max-width:640px){.candidate-row{align-items:flex-start;flex-direction:column}}
 .result-view{white-space:normal;background:#0a1422;border:1px solid #263b55;border-radius:10px;padding:16px;margin-top:14px;color:#dce7f5;font:13px/1.55 Inter,Segoe UI,Arial,sans-serif;min-height:58px}
 .result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
 .result-title{font-size:14px;font-weight:750;color:#f1f6fc}
@@ -55,22 +55,22 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <button class="nav" data-page="domain"><span class="ico">⌘</span>Domain Intelligence</button>
 <button class="nav" data-page="file"><span class="ico">▤</span>File Intelligence</button>
 <button class="nav" data-page="email"><span class="ico">✉</span>Email Intelligence</button>
-<button class="nav" data-page="threat"><span class="ico">⌁</span>Threat Intelligence</button>
-<button class="nav" data-page="events"><span class="ico">⌘</span>Event Correlation</button>
-<button class="nav" data-page="incidents"><span class="ico">⚑</span>Incident Center</button>
-<button class="nav" data-page="history"><span class="ico">◷</span>Historial</button>
-<button class="nav" data-page="ai"><span class="ico">✦</span>Copiloto IA</button>
+<button class="nav admin-only" data-page="threat"><span class="ico">⌁</span>Threat Intelligence</button>
+<button class="nav admin-only" data-page="events"><span class="ico">⌘</span>Event Correlation</button>
+<button class="nav admin-only" data-page="incidents"><span class="ico">⚑</span>Incident Center</button>
+<button class="nav admin-only" data-page="history"><span class="ico">◷</span>Historial</button>
+<button class="nav admin-only" data-page="ai"><span class="ico">✦</span>Copiloto IA</button>
 </div>
 <div class="side-label">Plataforma</div>
-<button class="nav" data-page="platform"><span class="ico">⚙</span>Estado e integraciones</button>
-<div class="sidebar-foot">KYROS SOC · 0.6.0<br>Defensive security workspace<br>Local-first · Privacy by design</div>
+<button class="nav admin-only" data-page="platform"><span class="ico">⚙</span>Estado e integraciones</button>
+<button class="nav" id="admin-login" onclick="activateAdmin()">Acceso administrador</button><div class="sidebar-foot">KYROS SOC · 0.6.0<br>Defensive security workspace<br>Local-first · Privacy by design</div>
 </aside>
 <main>
 <header class="topbar"><div class="crumb">Workspace / <strong id="crumb">Resumen general</strong></div><div class="top-status">● API protegida · Local-first</div></header>
 <div class="content">
 <section class="page active" id="page-overview">
-<div class="page-head"><div><div class="eyebrow">Security operations center</div><h1>Resumen general</h1><div class="muted">Visibilidad de análisis e incidentes registrados en Kyros.</div></div><button class="btn secondary" onclick="refreshDashboard()">↻ Actualizar</button></div>
-<div class="grid metrics">
+<div class="page-head"><div><div class="eyebrow">Security operations center</div><h1>Resumen general</h1><div class="muted">Herramientas públicas de análisis estático. Los resultados no se guardan en el servidor.</div></div><button class="btn secondary" onclick="refreshDashboard()">↻ Actualizar</button></div>
+<div class="panel"><h2>Modo de consulta pública</h2><p class="muted">Puedes analizar IP, dominios, correos y archivos de forma puntual. Los análisis públicos no se incorporan al historial ni al catálogo de Kyros. Para acceder a incidentes, evidencias, historial e integraciones, utiliza el acceso de administrador.</p></div><div class="grid metrics admin-only">
 <div class="card"><div class="metric-label">Análisis registrados</div><div class="metric" id="m-total">—</div><div class="metric-note">Historial disponible</div></div>
 <div class="card"><div class="metric-label">Análisis últimas 24 h</div><div class="metric" id="m-24">—</div><div class="metric-note">Actividad reciente</div></div>
 <div class="card"><div class="metric-label">Incidentes abiertos</div><div class="metric" id="m-open">—</div><div class="metric-note">Pendientes o reconocidos</div></div>
@@ -80,7 +80,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <div class="panel"><div class="panel-head"><div><h2>Actividad de análisis</h2><div class="muted">Distribución real del historial</div></div><span class="tag">Por tipo</span></div><div class="bar-list" id="type-bars"><div class="empty">Cargando métricas…</div></div></div>
 <div class="panel"><div class="panel-head"><div><h2>Incidentes por severidad</h2><span class="tag">No cerrados</span></div></div><div class="bar-list" id="severity-bars"><div class="empty">Cargando métricas…</div></div></div>
 </div>
-<div class="panel" style="margin-top:16px"><div class="panel-head"><div><h2>Actividad reciente</h2><div class="muted">Últimos análisis guardados</div></div><button class="btn secondary small" onclick="showPage('history')">Ver historial</button></div><div class="table-wrap"><table class="activity"><thead><tr><th>Fecha UTC</th><th>Tipo</th><th>Indicador / hash</th><th>Evaluación</th></tr></thead><tbody id="recent-body"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody></table></div></div>
+<div class="panel admin-only" style="margin-top:16px"><div class="panel-head"><div><h2>Actividad reciente</h2><div class="muted">Últimos análisis guardados</div></div><button class="btn secondary small" onclick="showPage('history')">Ver historial</button></div><div class="table-wrap"><table class="activity"><thead><tr><th>Fecha UTC</th><th>Tipo</th><th>Indicador / hash</th><th>Evaluación</th></tr></thead><tbody id="recent-body"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody></table></div></div>
 <div class="note">Los contadores reflejan datos registrados, no detecciones automáticas. Kyros no declara ataques activos sin evidencias de endpoints, red, firewall o SIEM correlacionadas.</div>
 </section>
 
@@ -110,7 +110,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <div class="note">El archivo se procesa en memoria y no se ejecuta ni se envía a terceros. En documentos Office se valida la estructura Open XML y se indican macros, fórmulas y enlaces externos cuando se detectan. Estos elementos no constituyen por sí solos un veredicto de malware. YARA es opcional; ClamAV y sandbox no están integrados. Evita subir muestras confidenciales.</div>
 </section>
 
-<section class="page" id="page-threat">
+<section class="page admin-only" id="page-threat">
 <div class="page-head"><div><div class="eyebrow">Local IOC repository</div><h1>Threat Intelligence</h1><div class="muted">Catálogo local de indicadores aportados por el analista.</div></div><button class="btn secondary" onclick="loadThreatIntel()">↻ Actualizar</button></div>
 <div class="panel"><h2>Analizar evidencia o archivo</h2><p class="muted">Recibe cualquier archivo de hasta 10 MB para calcular hashes e identificar su tipo. La extracción de IOC solo se realiza en formatos de texto compatibles.</p><div class="field"><label>Archivo de evidencia (máximo 10 MB)</label><input id="threat-file" type="file"></div><button class="btn" onclick="analyzeThreatFile()">Analizar archivo localmente</button><pre class="output" id="threat-file-output">Selecciona un archivo. No se ejecutará ni se enviará a terceros.</pre><h3>Texto extraído localmente</h3><pre class="output" id="threat-extracted-text">El contenido extraído aparecerá aquí.</pre><div class="field"><label><input id="threat-ai-consent" type="checkbox"> Autorizo enviar el texto extraído (máximo 7.000 caracteres) al proveedor IA configurado para su revisión. No se enviará el archivo.</label><button class="btn secondary" onclick="reviewExtractedWithAI()">Revisar texto con IA</button></div><pre class="output" id="threat-ai-output">La revisión IA es opcional y requiere consentimiento expreso.</pre><div id="threat-ioc-candidates" class="candidate-list" aria-live="polite"></div><h3>Enriquecimiento externo opcional</h3><p class="muted">Consulta manual de un indicador. No se suben archivos ni el texto extraído.</p><div class="form-grid"><div class="field"><label>Proveedor</label><select id="intel-provider"><option value="auto">Automático: fuentes aplicables configuradas</option><option value="virustotal">VirusTotal (SHA-256)</option><option value="abuseipdb">AbuseIPDB (IP pública)</option><option value="otx">AlienVault OTX (IP, dominio o SHA-256)</option></select></div><div class="field"><label>Tipo de indicador</label><select id="intel-type"><option value="sha256">SHA-256</option><option value="ip">IP</option><option value="domain">Dominio</option></select></div></div><div class="field"><label>Indicador</label><input id="intel-indicator" type="text" maxlength="253" placeholder="SHA-256, IP pública o dominio"></div><div class="field"><label><input id="intel-consent" type="checkbox"> Autorizo enviar únicamente este indicador a las fuentes aplicables configuradas.</label><button class="btn secondary" onclick="enrichThreatIndicator()">Consultar fuentes</button></div><pre class="output" id="intel-output">Consulta externa desactivada hasta que el analista la autorice.</pre><div class="note">Kyros calcula hashes para cualquier archivo no vacío dentro del límite. Extrae candidatos de IP, dominios, correos y SHA-256 solo en texto UTF-8 compatible. No importa automáticamente los candidatos ni declara que sean maliciosos.</div></div>
 <div class="panel" style="margin-top:16px"><div class="field"><label>Importar catálogo IOC CSV o Excel .xlsx (máximo 2 MB, 5000 filas)</label><input id="ioc-csv" type="file" accept=".csv,text/csv"><button class="btn secondary" onclick="importIOC()">Importar CSV local</button></div><pre class="output" id="ioc-import-message">Formato: indicator_type, indicator, confidence, source, description.</pre><div class="form-grid"><div class="field"><label>Tipo</label><select id="ioc-type"><option value="ip">IP</option><option value="domain">Dominio</option><option value="email">Correo</option><option value="sha256">SHA-256</option></select></div><div class="field"><label>Confianza (0–100)</label><input id="ioc-confidence" type="number" min="0" max="100" value="50"></div></div>
@@ -119,7 +119,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <div class="note">La confianza es una valoración introducida por el analista, no un veredicto automático de Kyros. Este catálogo es local y no ingiere feeds externos.</div>
 </section>
 
-<section class="page" id="page-events">
+<section class="page admin-only" id="page-events">
 <div class="page-head"><div><div class="eyebrow">Security telemetry</div><h1>Event Correlation</h1><div class="muted">Registro manual de eventos y coincidencias con el catálogo IOC.</div></div><button class="btn secondary" onclick="loadCorrelation()">↻ Actualizar</button></div>
 <div class="panel"><div class="form-grid"><div class="field"><label>Fuente</label><input id="event-source" placeholder="Firewall, EDR, SIEM…"></div><div class="field"><label>Tipo de evento</label><input id="event-type" placeholder="Login, conexión, alerta…"></div></div>
 <div class="field"><label>Indicador observado</label><input id="event-indicator" placeholder="IP, dominio, correo o hash"></div><div class="field"><label>Severidad</label><select id="event-severity"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></div><div class="field"><label>Contexto</label><textarea id="event-details"></textarea></div><button class="btn" onclick="addEvent()">Registrar evento</button><pre class="output" id="event-message">El registro es manual; todavía no hay conectores SIEM/EDR activos.</pre></div>
@@ -127,7 +127,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <div class="note">Una coincidencia IOC es una pista que requiere validación contextual. Kyros no declara un ataque activo ni crea incidentes automáticamente.</div>
 </section>
 
-<section class="page" id="page-incidents">
+<section class="page admin-only" id="page-incidents">
 <div class="page-head"><div><div class="eyebrow">Case management</div><h1>Incident Center</h1><div class="muted">Registro y seguimiento manual de casos de seguridad.</div></div><button class="btn secondary" onclick="loadIncidents()">↻ Actualizar</button></div>
 <div class="grid two">
 <div class="panel"><h2>Registrar incidente</h2><div class="field"><label>Título</label><input id="inc-title" maxlength="160" placeholder="Ej. Actividad sospechosa reportada"></div>
@@ -165,13 +165,13 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 </div>
 </section>
 
-<section class="page" id="page-history">
+<section class="page admin-only" id="page-history">
 <div class="page-head"><div><div class="eyebrow">Audit trail</div><h1>Historial de análisis</h1><div class="muted">Registros locales de indicadores y hashes.</div></div><button class="btn secondary" onclick="loadHistory()">↻ Actualizar</button></div>
 <div class="panel"><div class="table-wrap"><table class="activity"><thead><tr><th>Fecha UTC</th><th>Tipo</th><th>Indicador / hash</th><th>Riesgo</th><th>ID</th></tr></thead><tbody id="history-body"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody></table></div></div>
 <div class="note">En archivos, el historial conserva el hash y metadatos del análisis, no el nombre original ni el contenido. En Render Free, la base SQLite es efímera y puede perderse al reiniciar o desplegar.</div>
 </section>
 
-<section class="page" id="page-ai">
+<section class="page admin-only" id="page-ai">
 <div class="page-head"><div><div class="eyebrow">AI-assisted security operations</div><h1>Copiloto IA SOC</h1><div class="muted">Apoyo al análisis de alertas, eventos e indicadores. La IA no confirma incidentes ni ejecuta acciones.</div></div><button class="btn secondary" onclick="checkAIStatus()">Comprobar IA</button></div>
 <div class="panel">
 <div class="field"><label>Estado del proveedor</label><pre class="output" id="ai-status">Consultando configuración…</pre></div>
@@ -183,7 +183,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 </div>
 </section>
 
-<section class="page" id="page-platform">
+<section class="page admin-only" id="page-platform">
 <div class="page-head"><div><div class="eyebrow">Platform status</div><h1>Estado e integraciones</h1><div class="muted">Capacidades disponibles y pendientes de implementación.</div></div><button class="btn secondary" onclick="checkHealth()">Comprobar API</button></div>
 <div class="grid three">
 <div class="panel"><h2>API Kyros</h2><span class="pill low">Disponible</span><p class="muted">FastAPI · autenticación HTTP Basic · cabeceras de seguridad.</p></div>
@@ -243,7 +243,7 @@ async function analyzeIndicator(kind){const value=document.getElementById(kind).
 async function analyzeFile(){const input=document.getElementById("file"),out="file-output";if(!input.files.length){setOutput(out,"Selecciona un archivo.");return}if(input.files[0].size>10*1024*1024){setOutput(out,"El archivo supera el límite de 10 MB.");return}const form=new FormData();form.append("file",input.files[0]);setOutput(out,"Analizando en memoria…");try{const data=await api("/api/analyze/file",{method:"POST",headers:requestHeaders(),body:form});setOutput(out,data);refreshDashboard()}catch(e){setOutput(out,"Error: "+e.message)}}
 function addBar(container,label,value,max){const row=document.createElement("div");row.className="bar-row";const name=document.createElement("span");name.textContent=label;const track=document.createElement("span");track.className="bar";const fill=document.createElement("i");fill.style.width=(max?Math.max(0,value/max*100):0)+"%";track.append(fill);const count=document.createElement("span");count.textContent=String(value);row.append(name,track,count);container.append(row)}
 function cell(row,value){const td=document.createElement("td");td.textContent=value??"—";row.append(td)}
-async function refreshDashboard(){try{const [s,h]=await Promise.all([api("/api/dashboard/summary"),api("/api/history?limit=8")]);document.getElementById("m-total").textContent=s.total_analyses;document.getElementById("m-24").textContent=s.analyses_last_24h;document.getElementById("m-open").textContent=s.open_incidents;const types=document.getElementById("type-bars");types.replaceChildren();const typeEntries=Object.entries(s.analyses_by_type||{});if(!typeEntries.length)types.innerHTML='<div class="empty">Todavía no hay análisis registrados.</div>';else{const max=Math.max(...typeEntries.map(x=>x[1]));typeEntries.forEach(([k,v])=>addBar(types,k.toUpperCase(),v,max))}
+async function refreshDashboard(){if(document.getElementById("admin-login")&&!document.getElementById("admin-login").disabled)return;try{const [s,h]=await Promise.all([api("/api/dashboard/summary"),api("/api/history?limit=8")]);document.getElementById("m-total").textContent=s.total_analyses;document.getElementById("m-24").textContent=s.analyses_last_24h;document.getElementById("m-open").textContent=s.open_incidents;const types=document.getElementById("type-bars");types.replaceChildren();const typeEntries=Object.entries(s.analyses_by_type||{});if(!typeEntries.length)types.innerHTML='<div class="empty">Todavía no hay análisis registrados.</div>';else{const max=Math.max(...typeEntries.map(x=>x[1]));typeEntries.forEach(([k,v])=>addBar(types,k.toUpperCase(),v,max))}
 const sev=document.getElementById("severity-bars");sev.replaceChildren();const order=["critical","high","medium","low"];const entries=order.map(k=>[k,(s.incidents_by_severity||{})[k]||0]);const max=Math.max(1,...entries.map(x=>x[1]));entries.forEach(([k,v])=>addBar(sev,k.toUpperCase(),v,max));
 const body=document.getElementById("recent-body");body.replaceChildren();if(!h.items.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.className="empty";td.textContent="No hay actividad registrada.";tr.append(td);body.append(tr)}else h.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,new Date(x.created_at).toLocaleString());cell(tr,x.analysis_type.toUpperCase());cell(tr,x.indicator);cell(tr,x.result?.risk||"unknown");body.append(tr)})}catch(e){document.getElementById("m-total").textContent="—";console.error(e)}}
 async function loadHistory(){const body=document.getElementById("history-body");body.replaceChildren();try{const d=await api("/api/history?limit=100");if(!d.items.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="No hay análisis registrados.";tr.append(td);body.append(tr);return}d.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,new Date(x.created_at).toLocaleString());cell(tr,x.analysis_type.toUpperCase());cell(tr,x.indicator);cell(tr,x.result?.risk||"unknown");cell(tr,x.id);body.append(tr)})}catch(e){const tr=document.createElement("tr");cell(tr,e.message);body.append(tr)}}
@@ -269,7 +269,8 @@ async function addEvent(){const body={source:document.getElementById("event-sour
 async function loadCorrelation(){const body=document.getElementById("correlation-body");body.replaceChildren();try{const d=await api("/api/correlation");if(!d.items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="No hay eventos registrados.";tr.append(td);body.append(tr);return}d.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,new Date(x.event.created_at).toLocaleString());cell(tr,x.event.source+" / "+x.event.event_type);cell(tr,x.event.indicator);cell(tr,x.threat_match?"IOC #"+x.threat_match.id:"Sin coincidencia");cell(tr,x.assessment);body.append(tr)})}catch(e){const tr=document.createElement("tr");cell(tr,e.message);body.append(tr)}}
 async function checkAIStatus(){try{const d=await api("/api/ai/status");setOutput("ai-status",d.enabled?"Activo · "+d.provider+" · "+d.model:"No configurado · "+d.provider+" · Configura KYROS_AI_BASE_URL y KYROS_AI_MODEL en el servidor.")}catch(e){setOutput("ai-status","Error: "+e.message)}}
 async function runAIAnalysis(){const context=document.getElementById("ai-context").value.trim();if(!context){setOutput("ai-output","Introduce evidencia para analizar.");return}if(!document.getElementById("ai-consent").checked){setOutput("ai-output","Debes autorizar expresamente el envío del texto al proveedor IA.");return}setOutput("ai-output","Analizando…");try{const d=await api("/api/ai/analyze",{method:"POST",headers:requestHeaders(true),body:JSON.stringify({context,external_consent:true})});setOutput("ai-output",d.analysis+"\n\nProveedor: "+d.provider+" · Modelo: "+d.model+"\n"+d.note)}catch(e){setOutput("ai-output","Error: "+e.message)}}
+async function activateAdmin(){const b=document.getElementById("admin-login");b.disabled=true;b.textContent="Verificando acceso…";try{await api("/api/dashboard/summary");document.querySelectorAll(".admin-only").forEach(el=>el.classList.remove("admin-only"));b.textContent="Administrador activo";b.disabled=true;refreshDashboard()}catch(e){b.disabled=false;b.textContent="Acceso administrador";alert("No se pudo autenticar. Comprueba las credenciales configuradas en el servidor.")}}
 async function checkHealth(){setOutput("health-output","Consultando…");try{setOutput("health-output",await api("/api/health"))}catch(e){setOutput("health-output","Error: "+e.message)}}
-refreshDashboard();
+document.querySelectorAll(".admin-only").forEach(el=>el.classList.add("admin-only"));
 </script>
 </body></html>
