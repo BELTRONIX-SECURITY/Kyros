@@ -25,7 +25,24 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 .empty{color:#788ba6;text-align:center;padding:24px;font-size:12px}.section-title{margin:24px 0 13px;font-size:14px}
 @media(max-width:1050px){.metrics{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.three{grid-template-columns:1fr 1fr}}
 @media(max-width:720px){.layout{grid-template-columns:1fr}.sidebar{position:relative;height:auto;padding:12px}.brand{padding:4px 8px 12px}.side-label,.sidebar-foot{display:none}.nav-wrap{display:flex;overflow:auto;gap:4px}.nav{white-space:nowrap;width:auto;padding:9px}.topbar{height:50px;padding:0 18px}.content{padding:22px 16px}.page-head{display:block}.metrics{grid-template-columns:1fr 1fr}.three,.form-grid{grid-template-columns:1fr}.activity{min-width:560px}.table-wrap{overflow:auto}}
-.candidate-list{margin-top:14px}.candidate-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin:8px 0}.candidate-row .muted{font-size:12px;margin-top:3px}@media(max-width:640px){.candidate-row{align-items:flex-start;flex-direction:column}}</style>
+.candidate-list{margin-top:14px}.candidate-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin:8px 0}.candidate-row .muted{font-size:12px;margin-top:3px}@media(max-width:640px){.candidate-row{align-items:flex-start;flex-direction:column}}
+.result-view{white-space:normal;background:#0a1422;border:1px solid #263b55;border-radius:10px;padding:16px;margin-top:14px;color:#dce7f5;font:13px/1.55 Inter,Segoe UI,Arial,sans-serif;min-height:58px}
+.result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.result-title{font-size:14px;font-weight:750;color:#f1f6fc}
+.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin:10px 0}
+.result-item{background:#111f32;border:1px solid #263b55;border-radius:8px;padding:10px;min-width:0}
+.result-label{display:block;color:#8fa4bf;font-size:10px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px}
+.result-value{color:#e5edf8;overflow-wrap:anywhere;font-size:12px}
+.result-section{border-top:1px solid #26364c;margin-top:13px;padding-top:12px}
+.result-section h4{font-size:12px;color:#8fded2;margin:0 0 8px}
+.result-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.result-list li{background:#111f32;border-radius:7px;padding:9px 11px;overflow-wrap:anywhere}
+.result-status{display:inline-flex;padding:4px 9px;border-radius:20px;background:#24354a;color:#d2deed;font-size:10px;font-weight:700}
+.result-status.good{background:#173b35;color:#9be5d0}.result-status.warn{background:#493a24;color:#f4d18b}.result-status.bad{background:#4a2834;color:#ffb2bf}
+.result-raw{margin-top:14px;color:#91a3bb;font-size:11px}.result-raw summary{cursor:pointer;padding:6px 0}
+.result-raw pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07101c;border:1px solid #1d3047;border-radius:8px;padding:12px;color:#b7c7dc;font:11px/1.5 ui-monospace,Consolas,monospace;max-height:340px;overflow:auto}
+@media(max-width:640px){.result-view{padding:12px}.result-grid{grid-template-columns:1fr 1fr}}
+</style>
 </head>
 <body>
 <div class="layout">
@@ -161,7 +178,29 @@ const pageNames={overview:"Resumen general",ip:"IP Intelligence",domain:"Domain 
 function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.getElementById("page-"+name).classList.add("active");document.querySelectorAll(".nav[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===name));document.getElementById("crumb").textContent=pageNames[name];if(name==="overview")refreshDashboard();if(name==="incidents")loadIncidents();if(name==="history")loadHistory();if(name==="threat")loadThreatIntel();if(name==="events")loadCorrelation();if(name==="ai")checkAIStatus();}
 document.querySelectorAll(".nav[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
 function requestHeaders(json=false){const h={"X-Kyros-Request":"1"};if(json)h["Content-Type"]="application/json";return h}
-function setOutput(id,value){document.getElementById(id).textContent=typeof value==="string"?value:JSON.stringify(value,null,2)}
+function resultLabel(key){return String(key).replace(/_/g," ").replace(/\\b\\w/g,m=>m.toUpperCase())}
+function resultTone(key,value){const v=String(value??"").toLowerCase();if(/risk|severity|status|verdict|assessment|confidence/.test(key)){if(/critical|high|malicious|bad|error|blocked|true/.test(v))return "bad";if(/medium|suspicious|warning|unknown|partial/.test(v))return "warn";if(/low|clean|benign|safe|ok|success|false|closed/.test(v))return "good"}return ""}
+function renderResultValue(parent,key,value,depth=0){
+ if(value===null||value===undefined||value===""){return}
+ if(Array.isArray(value)){const section=document.createElement("div");section.className="result-section";const h=document.createElement("h4");h.textContent=resultLabel(key);section.append(h);const list=document.createElement("ul");list.className="result-list";value.slice(0,30).forEach((item)=>{const li=document.createElement("li");if(item&&typeof item==="object"){Object.entries(item).slice(0,8).forEach(([k,v])=>{const line=document.createElement("div");const strong=document.createElement("strong");strong.textContent=resultLabel(k)+": ";line.append(strong,document.createTextNode(typeof v==="object"?JSON.stringify(v):String(v??"")));li.append(line)})}else li.textContent=String(item);list.append(li)});section.append(list);parent.append(section);return}
+ if(typeof value==="object"){
+  const entries=Object.entries(value);if(!entries.length)return;
+  const section=document.createElement("div");section.className="result-section";const h=document.createElement("h4");h.textContent=resultLabel(key);section.append(h);
+  const simple=entries.filter(([,v])=>v===null||["string","number","boolean"].includes(typeof v));
+  if(simple.length){const grid=document.createElement("div");grid.className="result-grid";simple.forEach(([k,v])=>{const item=document.createElement("div");item.className="result-item";const label=document.createElement("span");label.className="result-label";label.textContent=resultLabel(k);const val=document.createElement("div");val.className="result-value";const tone=resultTone(k,v);if(tone){const badge=document.createElement("span");badge.className="result-status "+tone;badge.textContent=String(v);val.append(badge)}else val.textContent=String(v??"—");item.append(label,val);grid.append(item)});section.append(grid)}
+  if(depth<2)entries.filter(([,v])=>v&&typeof v==="object").forEach(([k,v])=>renderResultValue(section,k,v,depth+1));
+  parent.append(section);return
+ }
+ const item=document.createElement("div");item.className="result-item";const label=document.createElement("span");label.className="result-label";label.textContent=resultLabel(key);const val=document.createElement("div");val.className="result-value";val.textContent=String(value);item.append(label,val);parent.append(item)
+}
+function setOutput(id,value){
+ const el=document.getElementById(id);el.replaceChildren();
+ if(!value||typeof value!=="object"){el.classList.remove("result-view");el.textContent=String(value??"");return}
+ el.classList.add("result-view");
+ const head=document.createElement("div");head.className="result-head";const title=document.createElement("div");title.className="result-title";title.textContent=value.analysis_type?resultLabel(value.analysis_type)+" · Resultado del análisis":(value.status? "Resultado · "+String(value.status):"Resultado del análisis");head.append(title);el.append(head);
+ Object.entries(value).filter(([k])=>!["analysis_type"].includes(k)).forEach(([k,v])=>renderResultValue(el,k,v));
+ const details=document.createElement("details");details.className="result-raw";const summary=document.createElement("summary");summary.textContent="Ver respuesta técnica completa (JSON)";const pre=document.createElement("pre");pre.textContent=JSON.stringify(value,null,2);details.append(summary,pre);el.append(details)
+}
 async function api(url,options={}){const r=await fetch(url,options);let data;try{data=await r.json()}catch{data={detail:"Respuesta no válida del servidor"}}if(!r.ok)throw new Error(data.detail||("HTTP "+r.status));return data}
 async function analyzeIndicator(kind){const value=document.getElementById(kind).value.trim(),out=kind+"-output";if(!value){setOutput(out,"Introduce un indicador.");return}setOutput(out,"Analizando…");const body={indicator:value};if(kind==="ip"||kind==="domain")body.external_lookup=document.getElementById(kind+"-external").checked;try{const data=await api("/api/analyze/"+kind,{method:"POST",headers:requestHeaders(true),body:JSON.stringify(body)});setOutput(out,data);refreshDashboard()}catch(e){setOutput(out,"Error: "+e.message)}}
 async function analyzeFile(){const input=document.getElementById("file"),out="file-output";if(!input.files.length){setOutput(out,"Selecciona un archivo.");return}if(input.files[0].size>10*1024*1024){setOutput(out,"El archivo supera el límite de 10 MB.");return}const form=new FormData();form.append("file",input.files[0]);setOutput(out,"Analizando en memoria…");try{const data=await api("/api/analyze/file",{method:"POST",headers:requestHeaders(),body:form});setOutput(out,data);refreshDashboard()}catch(e){setOutput(out,"Error: "+e.message)}}
