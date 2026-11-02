@@ -195,7 +195,7 @@ function renderResultValue(parent,key,value,depth=0){
 }
 function setOutput(id,value){
  const el=document.getElementById(id);el.replaceChildren();
- if(!value||typeof value!=="object"){el.classList.remove("result-view");el.textContent=String(value??"");return}
+ if(typeof value==="string"&&value.length>180){el.classList.add("result-view");const h=document.createElement("div");h.className="result-title";h.textContent="Informe del copiloto · Análisis SOC";el.append(h);value.split("\\n").forEach(line=>{const p=document.createElement("p");p.style.whiteSpace="pre-wrap";p.style.margin="8px 0";p.textContent=line;el.append(p)});const n=document.createElement("div");n.className="note";n.textContent="Evaluación orientativa: valida evidencias y contexto antes de declarar un incidente.";el.append(n);return}if(!value||typeof value!=="object"){el.classList.remove("result-view");el.textContent=String(value??"");return}
  el.classList.add("result-view");
  const head=document.createElement("div");head.className="result-head";const title=document.createElement("div");title.className="result-title";title.textContent=value.analysis_type?resultLabel(value.analysis_type)+" · Resultado del análisis":(value.status? "Resultado · "+String(value.status):"Resultado del análisis");head.append(title);el.append(head);
  Object.entries(value).filter(([k])=>!["analysis_type"].includes(k)).forEach(([k,v])=>renderResultValue(el,k,v));
