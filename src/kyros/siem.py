@@ -100,7 +100,10 @@ def _read_rows(filename: str, data: bytes) -> tuple[list[dict], str]:
         reader = csv.DictReader(io.StringIO(text))
         if not reader.fieldnames:
             raise ValueError("El CSV no contiene encabezados.")
-        return list(reader), "csv"
+        rows = list(reader)
+        if len(rows) > MAX_SIEM_ROWS:
+            raise ValueError(f"El archivo supera el máximo de {MAX_SIEM_ROWS} eventos.")
+        return rows, "csv"
     if suffix != ".xlsx":
         raise ValueError("Formato no admitido. Utiliza Excel .xlsx o CSV UTF-8; .xls no está soportado.")
     try:
@@ -218,6 +221,24 @@ def analyze_siem_rows(rows: list[dict], source_format: str = "xlsx") -> dict:
         add_incident("Múltiples fallos de autenticación", "medium", "low",
             f"Se registraron {len(failed)} eventos compatibles con fallos de autenticación.",
             failed, ["T1110"], ["No se ha demostrado que los fallos precedieran a un acceso exitoso."])
+
+    # Relate cases only when they share a concrete host, account or source IP.
+    for index, incident in enumerate(incidents):
+        related = []
+        for other_index, other in enumerate(incidents):
+            if index == other_index:
+                continue
+            shared_hosts = set(incident["hosts"]) & set(other["hosts"])
+            shared_users = set(incident["users"]) & set(other["users"])
+            shared_ips = set(incident["source_ips"]) & set(other["source_ips"])
+            if shared_hosts or shared_users or shared_ips:
+                related.append({
+                    "incident_id": other["id"],
+                    "shared_hosts": sorted(shared_hosts),
+                    "shared_users": sorted(shared_users),
+                    "shared_source_ips": sorted(shared_ips),
+                })
+        incident["related_incidents"] = related
 
     severities = Counter(e["severity"].lower() for e in events if e["severity"])
     return {
