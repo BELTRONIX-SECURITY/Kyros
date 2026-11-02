@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     region: frankfurt
-    branch: security/free-deploy
+    branch: main
     buildCommand: pip install .
     startCommand: uvicorn kyros.web:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
