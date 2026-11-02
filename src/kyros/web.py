@@ -22,6 +22,7 @@ from starlette.requests import Request
 
 from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context
 from kyros.external_intel import build_assessment, lookup_available_sources, lookup_indicator, provider_status
+from kyros.siem import MAX_SIEM_UPLOAD, analyze_siem_file, build_soc_l2_report
 
 from kyros.database import (
     add_incident_evidence, add_incident_timeline, add_security_event, add_threat_indicator,
