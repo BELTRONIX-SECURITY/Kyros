@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><title>Kyros SOC | Security Operations</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#e7edf7;background:#080d18;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;background:#080d18}button,input,textarea,select{font:inherit}
+.layout{min-height:100vh;display:grid;grid-template-columns:248px 1fr}.sidebar{background:#0b1322;border-right:1px solid #22314a;padding:24px 16px;position:sticky;top:0;height:100vh}
+.brand{font-size:22px;font-weight:850;letter-spacing:1.8px;padding:0 12px 28px}.brand span{color:#55d6c5}.side-label{color:#6f819e;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;padding:18px 12px 8px}
+.nav{width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:transparent;color:#aebbd0;border:0;border-radius:9px;padding:11px 12px;margin:3px 0;cursor:pointer}.nav:hover,.nav.active{background:#15243a;color:#fff}.nav.active{box-shadow:inset 3px 0 #50d6c6}.nav .ico{width:18px;text-align:center;color:#7f98b8}
+.sidebar-foot{position:absolute;bottom:20px;left:24px;right:24px;color:#71829d;font-size:11px;line-height:1.6}
+main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:flex;align-items:center;justify-content:space-between;padding:0 34px;background:#0b1322}.crumb{font-size:12px;color:#8495af}.top-status{font-size:11px;color:#7ee0b4}.content{max-width:1450px;margin:0 auto;padding:34px}
+.page{display:none}.page.active{display:block}.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:26px}h1{font-size:27px;margin:0 0 7px}h2{font-size:16px;margin:0 0 7px}.muted{color:#8fa0ba;font-size:13px;line-height:1.55}.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#7f96b6;margin-bottom:9px}
+.grid{display:grid;gap:16px}.metrics{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:20px}.two{grid-template-columns:1.35fr 1fr}.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card,.panel{background:#101a2b;border:1px solid #263750;border-radius:13px;padding:20px;min-width:0}.metric-label{color:#91a2bc;font-size:12px}.metric{font-size:28px;font-weight:750;margin:10px 0 5px}.metric-note{color:#7185a2;font-size:11px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px}.tag{font-size:10px;color:#9fb0c8;background:#1a2a42;padding:5px 8px;border-radius:20px}
+.bar-list{display:grid;gap:13px}.bar-row{display:grid;grid-template-columns:82px 1fr 28px;gap:10px;align-items:center;font-size:12px;color:#a8b7cc}.bar{height:7px;border-radius:9px;background:#1d2b40;overflow:hidden}.bar i{display:block;height:100%;background:#39bcb0;border-radius:9px;width:0}
+.activity{width:100%;border-collapse:collapse;font-size:12px}.activity th{text-align:left;color:#7186a5;font-weight:600;padding:10px 8px;border-bottom:1px solid #283750}.activity td{padding:12px 8px;border-bottom:1px solid #1d2a3f;color:#c5d0df;overflow-wrap:anywhere}.activity tr:last-child td{border-bottom:0}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:grid;gap:7px;margin-bottom:12px}.field label{font-size:12px;color:#aebbd0}.field input,.field textarea,.field select,.control{width:100%;border:1px solid #334761;background:#091321;color:#e8eff9;border-radius:8px;padding:11px;outline:none}.field textarea{min-height:90px;resize:vertical}.field input:focus,.field textarea:focus,.field select:focus{border-color:#39bcb0}
+.btn{border:0;border-radius:8px;background:#087b78;color:white;padding:11px 16px;font-weight:700;cursor:pointer}.btn:hover{background:#0a918a}.btn.secondary{background:#1c2d45;color:#cbd7e7}.btn.danger{background:#63343e}.btn.small{padding:7px 10px;font-size:11px}.actions{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;align-items:flex-start;gap:9px;color:#bac7d8;font-size:12px;line-height:1.5;margin:12px 0}.check input{margin-top:2px}
+.output{white-space:pre-wrap;overflow-wrap:anywhere;background:#081321;border:1px solid #1d3047;border-radius:9px;padding:14px;color:#b7e8dc;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:58px;margin-top:14px}
+.note{border-left:3px solid #39bcb0;background:#132237;padding:13px 15px;color:#a9bad0;font-size:12px;line-height:1.6;border-radius:0 8px 8px 0;margin-top:16px}
+.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#26354b;color:#b9c8dc;font-size:10px;text-transform:uppercase}.pill.high,.pill.critical{background:#4a2834;color:#ffabb8}.pill.medium{background:#493a24;color:#f5d18b}.pill.low{background:#1c3b38;color:#9de2cf}.pill.closed{background:#24354a;color:#9eafc4}
+.empty{color:#788ba6;text-align:center;padding:24px;font-size:12px}.section-title{margin:24px 0 13px;font-size:14px}
+@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.three{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){.layout{grid-template-columns:1fr}.sidebar{position:relative;height:auto;padding:12px}.brand{padding:4px 8px 12px}.side-label,.sidebar-foot{display:none}.nav-wrap{display:flex;overflow:auto;gap:4px}.nav{white-space:nowrap;width:auto;padding:9px}.topbar{height:50px;padding:0 18px}.content{padding:22px 16px}.page-head{display:block}.metrics{grid-template-columns:1fr 1fr}.three,.form-grid{grid-template-columns:1fr}.activity{min-width:560px}.table-wrap{overflow:auto}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<div class="brand">KYROS<span> / SOC</span></div>
+<div class="side-label">Workspace</div>
+<div class="nav-wrap">
+<button class="nav active" data-page="overview"><span class="ico">▦</span>Resumen general</button>
+<button class="nav" data-page="ip"><span class="ico">◎</span>IP Intelligence</button>
+<button class="nav" data-page="domain"><span class="ico">⌘</span>Domain Intelligence</button>
+<button class="nav" data-page="file"><span class="ico">▤</span>File Intelligence</button>\n<button class="nav" data-page="email"><span class="ico">✉</span>Email Intelligence</button>
+<button class="nav" data-page="threat"><span class="ico">⌁</span>Threat Intelligence</button>
+<button class="nav" data-page="events"><span class="ico">⌘</span>Event Correlation</button>
+<button class="nav" data-page="incidents"><span class="ico">⚑</span>Incident Center</button>
+<button class="nav" data-page="history"><span class="ico">◷</span>Historial</button>
+<button class="nav" data-page="ai"><span class="ico">✦</span>Copiloto IA</button>
+</div>
+<div class="side-label">Plataforma</div>
+<button class="nav" data-page="platform"><span class="ico">⚙</span>Estado e integraciones</button>
+<div class="sidebar-foot">KYROS SOC · 0.6.0<br>Defensive security workspace<br>Local-first · Privacy by design</div>
+</aside>
+<main>
+<header class="topbar"><div class="crumb">Workspace / <strong id="crumb">Resumen general</strong></div><div class="top-status">● API protegida · Local-first</div></header>
+<div class="content">
+<section class="page active" id="page-overview">
+<div class="page-head"><div><div class="eyebrow">Security operations center</div><h1>Resumen general</h1><div class="muted">Visibilidad de análisis e incidentes registrados en Kyros.</div></div><button class="btn secondary" onclick="refreshDashboard()">↻ Actualizar</button></div>
+<div class="grid metrics">
+<div class="card"><div class="metric-label">Análisis registrados</div><div class="metric" id="m-total">—</div><div class="metric-note">Historial disponible</div></div>
+<div class="card"><div class="metric-label">Análisis últimas 24 h</div><div class="metric" id="m-24">—</div><div class="metric-note">Actividad reciente</div></div>
+<div class="card"><div class="metric-label">Incidentes abiertos</div><div class="metric" id="m-open">—</div><div class="metric-note">Pendientes o reconocidos</div></div>
+<div class="card"><div class="metric-label">Evaluación global</div><div class="metric" style="font-size:19px">Sin determinar</div><div class="metric-note">Requiere telemetría correlacionada</div></div>
+</div>
+<div class="grid two">
+<div class="panel"><div class="panel-head"><div><h2>Actividad de análisis</h2><div class="muted">Distribución real del historial</div></div><span class="tag">Por tipo</span></div><div class="bar-list" id="type-bars"><div class="empty">Cargando métricas…</div></div></div>
+<div class="panel"><div class="panel-head"><div><h2>Incidentes por severidad</h2><span class="tag">No cerrados</span></div></div><div class="bar-list" id="severity-bars"><div class="empty">Cargando métricas…</div></div></div>
+</div>
+<div class="panel" style="margin-top:16px"><div class="panel-head"><div><h2>Actividad reciente</h2><div class="muted">Últimos análisis guardados</div></div><button class="btn secondary small" onclick="showPage('history')">Ver historial</button></div><div class="table-wrap"><table class="activity"><thead><tr><th>Fecha UTC</th><th>Tipo</th><th>Indicador / hash</th><th>Evaluación</th></tr></thead><tbody id="recent-body"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody></table></div></div>
+<div class="note">Los contadores reflejan datos registrados, no detecciones automáticas. Kyros no declara ataques activos sin evidencias de endpoints, red, firewall o SIEM correlacionadas.</div>
+</section>
+
+<section class="page" id="page-ip">
+<div class="page-head"><div><div class="eyebrow">Indicator analysis</div><h1>IP Intelligence</h1><div class="muted">Clasificación de direcciones y enriquecimiento geográfico/ASN opcional.</div></div></div>
+<div class="panel"><div class="field"><label>Dirección IPv4 o IPv6</label><input id="ip" placeholder="Ej. 8.8.8.8"></div>
+<label class="check"><input id="ip-external" type="checkbox"><span>Autorizar consulta externa a ipapi.co y FreeIPAPI. Se transmitirá la IP pública introducida a esos proveedores. No actives esta opción para indicadores confidenciales.</span></label>
+<button class="btn" onclick="analyzeIndicator('ip')">Analizar IP</button><pre class="output" id="ip-output">Introduce una dirección IP para iniciar el análisis.</pre></div>
+<div class="note">Las IP privadas y especiales no se envían a proveedores. Geolocalización, ASN y detección de proxy no equivalen a reputación ni demuestran actividad maliciosa.</div>
+</section>
+
+<section class="page" id="page-domain">
+<div class="page-head"><div><div class="eyebrow">Indicator analysis</div><h1>Domain Intelligence</h1><div class="muted">Validación local del formato de dominios.</div></div></div>
+<div class="panel"><div class="field"><label>Nombre de dominio</label><input id="domain" placeholder="Ej. example.com"></div><label class="check"><input id="domain-external" type="checkbox"><span>Autorizar consultas DNS para A, AAAA, MX, TXT y _dmarc. El dominio será enviado al resolvedor DNS configurado.</span></label><button class="btn" onclick="analyzeIndicator('domain')">Analizar dominio</button><pre class="output" id="domain-output">Introduce un dominio sin URL ni ruta.</pre></div>
+<div class="note">Las consultas DNS solo se realizan si autorizas la casilla. Se consultan A, AAAA, MX, TXT y _dmarc; no se consulta reputación ni se valida DKIM.</div>
+</section>
+
+<section class="page" id="page-email">
+<div class="page-head"><div><div class="eyebrow">Email intelligence</div><h1>Email Intelligence</h1><div class="muted">Validación local de direcciones sin divulgación externa.</div></div></div>
+<div class="panel"><div class="field"><label>Dirección de correo</label><input id="email" type="email" maxlength="254" placeholder="usuario@example.com"></div><button class="btn" onclick="analyzeIndicator('email')">Analizar correo</button><pre class="output" id="email-output">Introduce una dirección para validar su formato.</pre></div>
+<div class="note">Esta comprobación solo valida sintaxis y normaliza el dominio. No confirma que el buzón exista ni consulta DNS, brechas o reputación. La dirección no se envía a servicios externos.</div>
+</section>
+
+<section class="page" id="page-file">
+<div class="page-head"><div><div class="eyebrow">Static file triage</div><h1>File Intelligence</h1><div class="muted">Identificación por firma y estructura, hashes y revisión estática de documentos Office.</div></div></div>
+<div class="panel"><div class="field"><label>Archivo (máximo 10 MB)</label><input id="file" type="file"></div><button class="btn" onclick="analyzeFile()">Analizar archivo</button><pre class="output" id="file-output">Selecciona un archivo para iniciar el triaje.</pre></div>
+<div class="note">El archivo se procesa en memoria y no se ejecuta ni se envía a terceros. En documentos Office se valida la estructura Open XML y se indican macros, fórmulas y enlaces externos cuando se detectan. Estos elementos no constituyen por sí solos un veredicto de malware. YARA es opcional; ClamAV y sandbox no están integrados. Evita subir muestras confidenciales.</div>
+</section>
+
+<section class="page" id="page-threat">
+<div class="page-head"><div><div class="eyebrow">Local IOC repository</div><h1>Threat Intelligence</h1><div class="muted">Catálogo local de indicadores aportados por el analista.</div></div><button class="btn secondary" onclick="loadThreatIntel()">↻ Actualizar</button></div>
+<div class="panel"><div class="field"><label>Importar catálogo CSV (máximo 1 MB, 5000 filas)</label><input id="ioc-csv" type="file" accept=".csv,text/csv"><button class="btn secondary" onclick="importIOC()">Importar CSV local</button></div><pre class="output" id="ioc-import-message">Formato: indicator_type, indicator, confidence, source, description.</pre><div class="form-grid"><div class="field"><label>Tipo</label><select id="ioc-type"><option value="ip">IP</option><option value="domain">Dominio</option><option value="email">Correo</option><option value="sha256">SHA-256</option></select></div><div class="field"><label>Confianza (0–100)</label><input id="ioc-confidence" type="number" min="0" max="100" value="50"></div></div>
+<div class="field"><label>Indicador</label><input id="ioc-value" placeholder="IP, dominio, email o hash"></div><div class="field"><label>Fuente / referencia</label><input id="ioc-source" maxlength="100" placeholder="Ej. análisis interno, informe, fuente OSINT"></div><div class="field"><label>Descripción y contexto</label><textarea id="ioc-description" maxlength="1000"></textarea></div><button class="btn" onclick="addIOC()">Guardar IOC local</button><pre class="output" id="ioc-message">Los indicadores se almacenan en la base local. No se consultan fuentes externas automáticamente.</pre></div>
+<div class="panel" style="margin-top:16px"><h2>Catálogo IOC</h2><div class="table-wrap"><table class="activity"><thead><tr><th>Tipo</th><th>Indicador</th><th>Confianza</th><th>Fuente</th><th>Fecha</th></tr></thead><tbody id="ioc-body"></tbody></table></div></div>
+<div class="note">La confianza es una valoración introducida por el analista, no un veredicto automático de Kyros. Este catálogo es local y no ingiere feeds externos.</div>
+</section>
+
+<section class="page" id="page-events">
+<div class="page-head"><div><div class="eyebrow">Security telemetry</div><h1>Event Correlation</h1><div class="muted">Registro manual de eventos y coincidencias con el catálogo IOC.</div></div><button class="btn secondary" onclick="loadCorrelation()">↻ Actualizar</button></div>
+<div class="panel"><div class="form-grid"><div class="field"><label>Fuente</label><input id="event-source" placeholder="Firewall, EDR, SIEM…"></div><div class="field"><label>Tipo de evento</label><input id="event-type" placeholder="Login, conexión, alerta…"></div></div>
+<div class="field"><label>Indicador observado</label><input id="event-indicator" placeholder="IP, dominio, correo o hash"></div><div class="field"><label>Severidad</label><select id="event-severity"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></div><div class="field"><label>Contexto</label><textarea id="event-details"></textarea></div><button class="btn" onclick="addEvent()">Registrar evento</button><pre class="output" id="event-message">El registro es manual; todavía no hay conectores SIEM/EDR activos.</pre></div>
+<div class="panel" style="margin-top:16px"><h2>Resultados de correlación local</h2><div class="table-wrap"><table class="activity"><thead><tr><th>Fecha</th><th>Fuente / tipo</th><th>Indicador</th><th>Coincidencia IOC</th><th>Evaluación</th></tr></thead><tbody id="correlation-body"></tbody></table></div></div>
+<div class="note">Una coincidencia IOC es una pista que requiere validación contextual. Kyros no declara un ataque activo ni crea incidentes automáticamente.</div>
+</section>
+
+<section class="page" id="page-incidents">
+<div class="page-head"><div><div class="eyebrow">Case management</div><h1>Incident Center</h1><div class="muted">Registro y seguimiento manual de casos de seguridad.</div></div><button class="btn secondary" onclick="loadIncidents()">↻ Actualizar</button></div>
+<div class="grid two">
+<div class="panel"><h2>Registrar incidente</h2><div class="field"><label>Título</label><input id="inc-title" maxlength="160" placeholder="Ej. Actividad sospechosa reportada"></div>
+<div class="field"><label>Descripción / evidencias</label><textarea id="inc-description" maxlength="2000" placeholder="Describe la alerta, fuente y evidencias disponibles."></textarea></div>
+<div class="form-grid"><div class="field"><label>Severidad</label><select id="inc-severity"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></div><div class="field"><label>Origen</label><select id="inc-source"><option value="manual">Manual</option><option value="siem">SIEM</option><option value="edr">EDR</option><option value="network">Red / Firewall</option><option value="user_report">Reporte</option></select></div></div>
+<div class="field"><label>Indicador relacionado (opcional)</label><input id="inc-indicator" maxlength="253" placeholder="IP, dominio o hash"></div><button class="btn" onclick="createIncident()">Crear incidente</button><pre class="output" id="inc-message">Los casos creados aquí son registros manuales, no detecciones automáticas.</pre></div>
+<div class="panel"><div class="panel-head"><div><h2>Flujo de trabajo</h2><div class="muted">Estados disponibles</div></div></div>
+<div class="bar-list"><div class="bar-row"><span>Abierto</span><span class="bar"><i style="width:100%"></i></span><span>01</span></div><div class="bar-row"><span>Reconocido</span><span class="bar"><i style="width:65%"></i></span><span>02</span></div><div class="bar-row"><span>Cerrado</span><span class="bar"><i style="width:30%"></i></span><span>03</span></div></div>
+<div class="note">El estado representa el flujo administrativo. La severidad debe justificarse con evidencias y contexto del entorno.</div></div>
+</div>
+<div class="panel" style="margin-top:16px"><div class="panel-head"><div><h2>Casos registrados</h2><div class="muted">Actualiza el estado desde la tabla.</div></div></div><div class="table-wrap"><table class="activity"><thead><tr><th>ID / Fecha</th><th>Título</th><th>Severidad</th><th>Estado</th><th>Indicador</th><th>Acción</th></tr></thead><tbody id="incidents-body"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody></table></div></div>
+</section>
+
+<section class="page" id="page-history">
+<div class="page-head"><div><div class="eyebrow">Audit trail</div><h1>Historial de análisis</h1><div class="muted">Registros locales de indicadores y hashes.</div></div><button class="btn secondary" onclick="loadHistory()">↻ Actualizar</button></div>
+<div class="panel"><div class="table-wrap"><table class="activity"><thead><tr><th>Fecha UTC</th><th>Tipo</th><th>Indicador / hash</th><th>Riesgo</th><th>ID</th></tr></thead><tbody id="history-body"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody></table></div></div>
+<div class="note">En archivos, el historial conserva el hash y metadatos del análisis, no el nombre original ni el contenido. En Render Free, la base SQLite es efímera y puede perderse al reiniciar o desplegar.</div>
+</section>
+
+<section class="page" id="page-ai">
+<div class="page-head"><div><div class="eyebrow">AI-assisted security operations</div><h1>Copiloto IA SOC</h1><div class="muted">Apoyo al análisis de alertas, eventos e indicadores. La IA no confirma incidentes ni ejecuta acciones.</div></div><button class="btn secondary" onclick="checkAIStatus()">Comprobar IA</button></div>
+<div class="panel">
+<div class="field"><label>Estado del proveedor</label><pre class="output" id="ai-status">Consultando configuración…</pre></div>
+<div class="field"><label for="ai-context">Contexto para analizar (máximo 8.000 caracteres)</label><textarea id="ai-context" rows="10" placeholder="Pega únicamente la evidencia que quieras analizar: alerta, evento, IOC, proceso, timestamp y contexto relevante. Elimina contraseñas, tokens, datos personales y secretos."></textarea></div>
+<label class="check"><input type="checkbox" id="ai-consent"> Autorizo expresamente enviar este texto al proveedor IA configurado. Entiendo que saldrá de Kyros y quedará sujeto a las condiciones de ese proveedor.</label>
+<div class="actions"><button class="btn primary" onclick="runAIAnalysis()">Analizar con IA</button></div>
+<div class="note">Privacidad: Kyros no envía archivos, historial ni eventos automáticamente. Solo se transmite el texto que pegues al pulsar analizar y aceptar el consentimiento. Para máxima privacidad, configura un modelo local compatible con la API de chat, por ejemplo Ollama en tu propio servidor. La respuesta de IA es una hipótesis de apoyo que debe validar un analista.</div>
+<pre class="output" id="ai-output">El resultado aparecerá aquí.</pre>
+</div>
+</section>
+
+<section class="page" id="page-platform">
+<div class="page-head"><div><div class="eyebrow">Platform status</div><h1>Estado e integraciones</h1><div class="muted">Capacidades disponibles y pendientes de implementación.</div></div><button class="btn secondary" onclick="checkHealth()">Comprobar API</button></div>
+<div class="grid three">
+<div class="panel"><h2>API Kyros</h2><span class="pill low">Disponible</span><p class="muted">FastAPI · autenticación HTTP Basic · cabeceras de seguridad.</p></div>
+<div class="panel"><h2>Almacenamiento</h2><span class="pill medium">Efímero en Render Free</span><p class="muted">SQLite. Persistencia limitada por el filesystem gratuito.</p></div>
+<div class="panel"><h2>Fuentes IP</h2><span class="pill low">Opt-in</span><p class="muted">ipapi.co y FreeIPAPI para geolocalización y ASN de IP públicas.</p></div>
+<div class="panel"><h2>DNS / Domain reputation</h2><span class="pill low">DNS opt-in</span><p class="muted">A, AAAA, MX, TXT y DMARC básico. SPF/DKIM y reputación pendientes.</p></div>
+<div class="panel"><h2>File scanning</h2><span class="pill">Pendiente</span><p class="muted">YARA, ClamAV, sandbox aislada y análisis avanzado.</p></div>
+<div class="panel"><h2>SIEM / EDR</h2><span class="pill">Pendiente</span><p class="muted">Wazuh, Sentinel, Exabeam y CrowdStrike requieren conectores y configuración.</p></div>
+</div>
+<div class="note">Antes de usar datos operativos reales: añadir usuarios individuales, MFA/SSO, rate limiting, auditoría inmutable, persistencia adecuada, gestión de secretos y revisión de seguridad. La autenticación actual es compartida y no sustituye un IAM empresarial.</div>
+<pre class="output" id="health-output">Pulsa “Comprobar API” para consultar el estado.</pre>
+</section>
+</div></main></div>
+<script>
+const pageNames={overview:"Resumen general",ip:"IP Intelligence",domain:"Domain Intelligence",file:"File Intelligence",email:"Email Intelligence",threat:"Threat Intelligence",events:"Event Correlation",incidents:"Incident Center",history:"Historial",platform:"Estado e integraciones",ai:"Copiloto IA"};
+function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.getElementById("page-"+name).classList.add("active");document.querySelectorAll(".nav[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===name));document.getElementById("crumb").textContent=pageNames[name];if(name==="overview")refreshDashboard();if(name==="incidents")loadIncidents();if(name==="history")loadHistory();if(name==="threat")loadThreatIntel();if(name==="events")loadCorrelation();if(name==="ai")checkAIStatus();}
+document.querySelectorAll(".nav[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
+function requestHeaders(json=false){const h={"X-Kyros-Request":"1"};if(json)h["Content-Type"]="application/json";return h}
+function setOutput(id,value){document.getElementById(id).textContent=typeof value==="string"?value:JSON.stringify(value,null,2)}
+async function api(url,options={}){const r=await fetch(url,options);let data;try{data=await r.json()}catch{data={detail:"Respuesta no válida del servidor"}}if(!r.ok)throw new Error(data.detail||("HTTP "+r.status));return data}
+async function analyzeIndicator(kind){const value=document.getElementById(kind).value.trim(),out=kind+"-output";if(!value){setOutput(out,"Introduce un indicador.");return}setOutput(out,"Analizando…");const body={indicator:value};if(kind==="ip"||kind==="domain")body.external_lookup=document.getElementById(kind+"-external").checked;try{const data=await api("/api/analyze/"+kind,{method:"POST",headers:requestHeaders(true),body:JSON.stringify(body)});setOutput(out,data);refreshDashboard()}catch(e){setOutput(out,"Error: "+e.message)}}
+async function analyzeFile(){const input=document.getElementById("file"),out="file-output";if(!input.files.length){setOutput(out,"Selecciona un archivo.");return}if(input.files[0].size>10*1024*1024){setOutput(out,"El archivo supera el límite de 10 MB.");return}const form=new FormData();form.append("file",input.files[0]);setOutput(out,"Analizando en memoria…");try{const data=await api("/api/analyze/file",{method:"POST",headers:requestHeaders(),body:form});setOutput(out,data);refreshDashboard()}catch(e){setOutput(out,"Error: "+e.message)}}
+function addBar(container,label,value,max){const row=document.createElement("div");row.className="bar-row";const name=document.createElement("span");name.textContent=label;const track=document.createElement("span");track.className="bar";const fill=document.createElement("i");fill.style.width=(max?Math.max(0,value/max*100):0)+"%";track.append(fill);const count=document.createElement("span");count.textContent=String(value);row.append(name,track,count);container.append(row)}
+function cell(row,value){const td=document.createElement("td");td.textContent=value??"—";row.append(td)}
+async function refreshDashboard(){try{const [s,h]=await Promise.all([api("/api/dashboard/summary"),api("/api/history?limit=8")]);document.getElementById("m-total").textContent=s.total_analyses;document.getElementById("m-24").textContent=s.analyses_last_24h;document.getElementById("m-open").textContent=s.open_incidents;const types=document.getElementById("type-bars");types.replaceChildren();const typeEntries=Object.entries(s.analyses_by_type||{});if(!typeEntries.length)types.innerHTML='<div class="empty">Todavía no hay análisis registrados.</div>';else{const max=Math.max(...typeEntries.map(x=>x[1]));typeEntries.forEach(([k,v])=>addBar(types,k.toUpperCase(),v,max))}
+const sev=document.getElementById("severity-bars");sev.replaceChildren();const order=["critical","high","medium","low"];const entries=order.map(k=>[k,(s.incidents_by_severity||{})[k]||0]);const max=Math.max(1,...entries.map(x=>x[1]));entries.forEach(([k,v])=>addBar(sev,k.toUpperCase(),v,max));
+const body=document.getElementById("recent-body");body.replaceChildren();if(!h.items.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=4;td.className="empty";td.textContent="No hay actividad registrada.";tr.append(td);body.append(tr)}else h.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,new Date(x.created_at).toLocaleString());cell(tr,x.analysis_type.toUpperCase());cell(tr,x.indicator);cell(tr,x.result?.risk||"unknown");body.append(tr)})}catch(e){document.getElementById("m-total").textContent="—";console.error(e)}}
+async function loadHistory(){const body=document.getElementById("history-body");body.replaceChildren();try{const d=await api("/api/history?limit=100");if(!d.items.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="No hay análisis registrados.";tr.append(td);body.append(tr);return}d.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,new Date(x.created_at).toLocaleString());cell(tr,x.analysis_type.toUpperCase());cell(tr,x.indicator);cell(tr,x.result?.risk||"unknown");cell(tr,x.id);body.append(tr)})}catch(e){const tr=document.createElement("tr");cell(tr,e.message);body.append(tr)}}
+async function createIncident(){const title=document.getElementById("inc-title").value.trim();if(title.length<4){setOutput("inc-message","El título debe tener al menos 4 caracteres.");return}const body={title,description:document.getElementById("inc-description").value,severity:document.getElementById("inc-severity").value,source:document.getElementById("inc-source").value,indicator:document.getElementById("inc-indicator").value.trim()};try{const d=await api("/api/incidents",{method:"POST",headers:requestHeaders(true),body:JSON.stringify(body)});setOutput("inc-message",{message:"Incidente creado",...d});document.getElementById("inc-title").value="";document.getElementById("inc-description").value="";document.getElementById("inc-indicator").value="";await loadIncidents();refreshDashboard()}catch(e){setOutput("inc-message","Error: "+e.message)}}
+async function updateIncident(id,status){try{await api("/api/incidents/"+id,{method:"PATCH",headers:requestHeaders(true),body:JSON.stringify({status})});loadIncidents();refreshDashboard()}catch(e){alert("No se pudo actualizar: "+e.message)}}
+async function loadIncidents(){const body=document.getElementById("incidents-body");body.replaceChildren();try{const d=await api("/api/incidents?limit=100");if(!d.items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.className="empty";td.textContent="No hay incidentes registrados.";tr.append(td);body.append(tr);return}d.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,"#"+x.id+" · "+new Date(x.created_at).toLocaleString());cell(tr,x.title);const sev=document.createElement("td"),sp=document.createElement("span");sp.className="pill "+x.severity;sp.textContent=x.severity;sev.append(sp);tr.append(sev);const st=document.createElement("td"),pill=document.createElement("span");pill.className="pill "+(x.status==="closed"?"closed":"");pill.textContent=x.status;st.append(pill);tr.append(st);cell(tr,x.indicator||"—");const action=document.createElement("td");if(x.status!=="closed"){const btn=document.createElement("button");btn.className="btn small secondary";btn.textContent=x.status==="open"?"Reconocer":"Cerrar";btn.addEventListener("click",()=>updateIncident(x.id,x.status==="open"?"acknowledged":"closed"));action.append(btn)}else action.textContent="—";tr.append(action);body.append(tr)})}catch(e){const tr=document.createElement("tr");cell(tr,e.message);body.append(tr)}}
+async function importIOC(){const input=document.getElementById("ioc-csv");if(!input.files.length){setOutput("ioc-import-message","Selecciona un archivo CSV o Excel .xlsx.");return}if(input.files[0].size>2*1024*1024){setOutput("ioc-import-message","El archivo supera 2 MB.");return}const form=new FormData();form.append("file",input.files[0]);try{const d=await api("/api/threat-intel/import",{method:"POST",headers:requestHeaders(),body:form});setOutput("ioc-import-message",d);await loadThreatIntel()}catch(e){setOutput("ioc-import-message","Error: "+e.message)}}
+async function addIOC(){const body={indicator_type:document.getElementById("ioc-type").value,indicator:document.getElementById("ioc-value").value.trim(),confidence:Number(document.getElementById("ioc-confidence").value),source:document.getElementById("ioc-source").value.trim(),description:document.getElementById("ioc-description").value};try{const d=await api("/api/threat-intel/indicators",{method:"POST",headers:requestHeaders(true),body:JSON.stringify(body)});setOutput("ioc-message",d);await loadThreatIntel()}catch(e){setOutput("ioc-message","Error: "+e.message)}}
+async function loadThreatIntel(){const body=document.getElementById("ioc-body");body.replaceChildren();try{const d=await api("/api/threat-intel/indicators");if(!d.items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="No hay indicadores guardados.";tr.append(td);body.append(tr);return}d.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,x.indicator_type.toUpperCase());cell(tr,x.indicator);cell(tr,x.confidence+"%");cell(tr,x.source);cell(tr,new Date(x.created_at).toLocaleString());body.append(tr)})}catch(e){const tr=document.createElement("tr");cell(tr,e.message);body.append(tr)}}
+async function addEvent(){const body={source:document.getElementById("event-source").value.trim(),event_type:document.getElementById("event-type").value.trim(),indicator:document.getElementById("event-indicator").value.trim(),severity:document.getElementById("event-severity").value,details:document.getElementById("event-details").value};try{const d=await api("/api/events",{method:"POST",headers:requestHeaders(true),body:JSON.stringify(body)});setOutput("event-message",d);await loadCorrelation()}catch(e){setOutput("event-message","Error: "+e.message)}}
+async function loadCorrelation(){const body=document.getElementById("correlation-body");body.replaceChildren();try{const d=await api("/api/correlation");if(!d.items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="No hay eventos registrados.";tr.append(td);body.append(tr);return}d.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,new Date(x.event.created_at).toLocaleString());cell(tr,x.event.source+" / "+x.event.event_type);cell(tr,x.event.indicator);cell(tr,x.threat_match?"IOC #"+x.threat_match.id:"Sin coincidencia");cell(tr,x.assessment);body.append(tr)})}catch(e){const tr=document.createElement("tr");cell(tr,e.message);body.append(tr)}}
+async function checkAIStatus(){try{const d=await api("/api/ai/status");setOutput("ai-status",d.enabled?"Activo · "+d.provider+" · "+d.model:"No configurado · "+d.provider+" · Configura KYROS_AI_BASE_URL y KYROS_AI_MODEL en el servidor.")}catch(e){setOutput("ai-status","Error: "+e.message)}}
+async function runAIAnalysis(){const context=document.getElementById("ai-context").value.trim();if(!context){setOutput("ai-output","Introduce evidencia para analizar.");return}if(!document.getElementById("ai-consent").checked){setOutput("ai-output","Debes autorizar expresamente el envío del texto al proveedor IA.");return}setOutput("ai-output","Analizando…");try{const d=await api("/api/ai/analyze",{method:"POST",headers:requestHeaders(true),body:JSON.stringify({context,external_consent:true})});setOutput("ai-output",d.analysis+"\n\nProveedor: "+d.provider+" · Modelo: "+d.model+"\n"+d.note)}catch(e){setOutput("ai-output","Error: "+e.message)}}
+async function checkHealth(){setOutput("health-output","Consultando…");try{setOutput("health-output",await api("/api/health"))}catch(e){setOutput("health-output","Error: "+e.message)}}
+refreshDashboard();
+</script>
+</body></html>

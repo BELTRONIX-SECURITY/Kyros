@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kyros"
-version = "0.1.0"
-description = "Herramienta OSINT automatizada para correos electrónicos, escrita en Python"
+version = "0.6.0"
+description = "Plataforma OSINT y análisis defensivo local para operaciones SOC"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -14,16 +14,25 @@ dependencies = [
     "dnspython>=2.6",
     "pyyaml>=6.0",
     "rich>=13.7",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.5"]
+yara = ["yara-python>=4.5"]
 
 [project.scripts]
 kyros = "kyros.cli:main"
+kyros-web = "kyros.web:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+kyros = ["static/*.html"]
 
 [tool.ruff]
 line-length = 100

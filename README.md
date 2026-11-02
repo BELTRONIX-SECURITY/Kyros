@@ -20,8 +20,8 @@ Los servicios sin API key configurada se omiten; un servicio que falle nunca rom
 ## Instalación
 
 ```bash
-git clone https://github.com/TU_USUARIO/kyros.git
-cd kyros
+git clone https://github.com/troytechnology/Kyros.git
+cd Kyros
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 ```
@@ -30,7 +30,7 @@ pip install -e ".[dev]"
 
 Copia `config.example.yaml` a `~/.kyros.yaml` y rellena las claves que tengas, o usa variables de entorno: `KYROS_HUNTER_KEY`, `KYROS_EMAILREP_KEY`, `KYROS_HIBP_KEY`.
 
-## Uso
+## Uso CLI
 
 ```bash
 kyros ejemplo@dominio.com
@@ -39,6 +39,19 @@ kyros ejemplo@dominio.com --json
 kyros ejemplo@dominio.com --config ./config.yaml --timeout 20
 ```
 
+## Interfaz web Kyros SOC
+
+La rama `develop` incorpora una interfaz web inicial y una API FastAPI para el triaje defensivo local:
+
+```bash
+pip install -e ".[dev]"
+kyros-web
+```
+
+Abre http://127.0.0.1:8000 y consulta la API en http://127.0.0.1:8000/docs. Incluye clasificación de IP, validación de dominios y análisis estático inicial de archivos (hashes y firmas básicas; límite 10 MB). Los archivos no se ejecutan ni se envían a terceros. Las consultas externas están desactivadas.
+
+Consulta [README_SOC.md](README_SOC.md) para el alcance, limitaciones y siguientes fases. Este MVP no incorpora todavía reputación externa, YARA/ClamAV, persistencia, correlación SIEM ni gestión de incidentes. No expongas la API fuera del equipo local sin controles de autenticación y seguridad adicionales.
+
 ## Docker
 
 ```bash
@@ -46,7 +59,7 @@ docker build -t kyros .
 docker run --rm -e KYROS_HIBP_KEY=xxx kyros ejemplo@dominio.com
 ```
 
-## Añadir un servicio nuevo
+## Añadir un servicio OSINT nuevo
 
 1. Crea `src/kyros/services/mi_servicio.py` con una clase que herede de `Service` e implemente `async def run(self, ctx)`.
 2. Si necesita clave, define `key_name = "mi_servicio"` (y añádelo a `KNOWN_KEYS` en `config.py`).
