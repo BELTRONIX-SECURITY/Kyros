@@ -240,3 +240,76 @@ def scan_yara(data: bytes) -> dict[str, Any]:
     except (OSError, yara.Error, TimeoutError) as exc:
         return {"status": "error", "matches": [],
                 "note": f"No se pudo completar YARA: {type(exc).__name__}."}
+
+
+TEXT_IOC_EXTENSIONS = {
+    ".txt", ".log", ".csv", ".json", ".xml", ".yaml", ".yml",
+    ".eml", ".conf", ".ini", ".cfg", ".out",
+}
+IOC_EMAIL_RE = re.compile(r"(?<![\w.+-])[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9.-]+\.[A-Z]{2,63}(?![\w.-])", re.I)
+IOC_IPV4_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
+IOC_SHA256_RE = re.compile(r"(?i)\b[a-f0-9]{64}\b")
+IOC_DOMAIN_RE = re.compile(r"(?i)(?<![@\w.-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?![\w.-])")
+
+
+def extract_ioc_candidates(data: bytes, filename: str | None = None) -> dict[str, Any]:
+    """Extract review-only IOC candidates from small UTF-8 text files; never execute or auto-import."""
+    suffix = PurePath(filename or "").suffix.lower()
+    if suffix not in TEXT_IOC_EXTENSIONS:
+        return {
+            "supported_for_text_extraction": False,
+            "reason": "El formato se recibió y se calculó su hash, pero no se extrae texto automáticamente.",
+            "candidates": [],
+        }
+    if len(data) > 2 * 1024 * 1024:
+        return {
+            "supported_for_text_extraction": False,
+            "reason": "El archivo supera 2 MB para extracción de texto; el análisis de hash sí está disponible.",
+            "candidates": [],
+        }
+    try:
+        content = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return {
+            "supported_for_text_extraction": False,
+            "reason": "El archivo no es texto UTF-8 válido; se conserva únicamente el análisis estático y los hashes.",
+            "candidates": [],
+        }
+
+    candidates: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def add(kind: str, value: str) -> None:
+        key = (kind, value.lower())
+        if key not in candidates and len(candidates) < 500:
+            candidates[key] = {
+                "indicator_type": kind,
+                "indicator": value,
+                "review_required": True,
+                "auto_imported": False,
+            }
+
+    for match in IOC_EMAIL_RE.finditer(content):
+        try:
+            add("email", classify_email(match.group(0))["indicator"])
+        except ValueError:
+            continue
+    for match in IOC_IPV4_RE.finditer(content):
+        try:
+            add("ip", classify_ip(match.group(0))["indicator"])
+        except ValueError:
+            continue
+    for match in IOC_SHA256_RE.finditer(content):
+        add("sha256", match.group(0).lower())
+    for match in IOC_DOMAIN_RE.finditer(content):
+        candidate = match.group(0).lower()
+        try:
+            add("domain", classify_domain(candidate)["indicator"])
+        except ValueError:
+            continue
+
+    return {
+        "supported_for_text_extraction": True,
+        "reason": "Candidatos extraídos localmente; revisa el contexto antes de incorporarlos al catálogo IOC.",
+        "candidates": list(candidates.values()),
+        "truncated": len(candidates) >= 500,
+    }
