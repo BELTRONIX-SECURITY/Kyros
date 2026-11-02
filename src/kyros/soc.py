@@ -246,7 +246,7 @@ TEXT_IOC_EXTENSIONS = {
     ".txt", ".log", ".csv", ".json", ".xml", ".yaml", ".yml",
     ".eml", ".conf", ".ini", ".cfg", ".out",
 }
-IOC_EMAIL_RE = re.compile(r"(?<![\w.+-])[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9.-]+\.[A-Z]{2,63}(?![\w.-])", re.I)
+IOC_EMAIL_RE = re.compile(r"(?<![\w.+-])[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9.-]+\.[A-Z]{2,63}(?![\w.-])", re.IGNORECASE)
 IOC_IPV4_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 IOC_SHA256_RE = re.compile(r"(?i)\b[a-f0-9]{64}\b")
 IOC_DOMAIN_RE = re.compile(r"(?i)(?<![@\w.-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?![\w.-])")
