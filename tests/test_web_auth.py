@@ -283,3 +283,52 @@ def test_threat_intel_csv_import_is_local_and_validated(monkeypatch, tmp_path):
         auth=("soc-admin", "a-strong-test-password-123"),
     )
     assert listing.json()["items"][0]["indicator"] == "203.0.113.9"
+
+
+def test_threat_intel_accepts_arbitrary_file_and_extracts_text_iocs_for_review(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    content = b"Suspicious connection to 8.8.8.8 and example.org; hash " + b"a" * 64
+    response = client.post(
+        "/api/threat-intel/analyze-file",
+        files={"file": ("evidence.txt", content, "text/plain")},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["external_submission"] is False
+    assert result["execution_performed"] is False
+    assert result["auto_imported"] is False
+    assert result["analysis"]["hashes"]["sha256"]
+    kinds = {item["indicator_type"] for item in result["ioc_extraction"]["candidates"]}
+    assert {"ip", "domain", "sha256"}.issubset(kinds)
+    assert all(item["review_required"] for item in result["ioc_extraction"]["candidates"])
+
+
+def test_threat_intel_accepts_binary_file_without_text_extraction(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    response = client.post(
+        "/api/threat-intel/analyze-file",
+        files={"file": ("sample.bin", b"\\x00\\xff\\x01binary-data", "application/octet-stream")},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["analysis"]["hashes"]["sha256"]
+    assert result["ioc_extraction"]["supported_for_text_extraction"] is False
+    assert result["external_submission"] is False
+    assert result["execution_performed"] is False
+
+
+def test_threat_intel_file_rejects_over_10mb(monkeypatch):
+    set_credentials(monkeypatch)
+    response = client.post(
+        "/api/threat-intel/analyze-file",
+        files={"file": ("large.bin", b"x" * (10 * 1024 * 1024 + 1), "application/octet-stream")},
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 413
