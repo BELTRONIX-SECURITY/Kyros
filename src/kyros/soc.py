@@ -111,10 +111,15 @@ def _ooxml_analysis(data: bytes, filename: str | None = None) -> dict[str, Any] 
             except (ET.ParseError, KeyError, OSError, zipfile.BadZipFile):
                 return {"file_type": "Office Open XML (estructura no válida)",
                         "structure": {"valid_ooxml": False, "inspection": "invalid_xml"}}
-            extension = "XLSM" if family == "Microsoft Excel" and has_macros else {
+            macro_extension = {
+                "Microsoft Excel": "XLSM", "Microsoft Word": "DOCM",
+                "Microsoft PowerPoint": "PPTM"
+            }
+            standard_extension = {
                 "Microsoft Excel": "XLSX", "Microsoft Word": "DOCX",
                 "Microsoft PowerPoint": "PPTX"
-            }[family]
+            }
+            extension = (macro_extension[family] if has_macros else standard_extension[family])
             return {
                 "file_type": f"{family} ({extension})",
                 "structure": {
