@@ -35,9 +35,8 @@ def require_auth(
     request: Request, credentials: HTTPBasicCredentials | None = Depends(security)
 ) -> str:
     """Require configured HTTP Basic credentials and reject cross-origin form posts."""
-    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-        if request.headers.get("x-kyros-request") != "1":
-            raise HTTPException(status_code=403, detail="Solicitud de origen no validada.")
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.headers.get("x-kyros-request") != "1":
+        raise HTTPException(status_code=403, detail="Solicitud de origen no validada.")
     expected_user = os.getenv("KYROS_AUTH_USERNAME", "")
     expected_password = os.getenv("KYROS_AUTH_PASSWORD", "")
     if not expected_user or len(expected_password) < 16:
