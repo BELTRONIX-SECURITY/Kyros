@@ -138,3 +138,39 @@ def test_macro_enabled_word_is_identified_without_execution():
     assert result["structure"]["macro_project_present"] is True
     assert result["structure"]["extension_matches_structure"] is True
     assert result["execution_performed"] is False
+
+
+def test_xlsx_text_and_iocs_are_extracted_locally():
+    from io import BytesIO
+    from openpyxl import Workbook
+    from kyros.soc import extract_ioc_candidates
+
+    stream = BytesIO()
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet["A1"] = "IP"
+    sheet["B1"] = "Dominio"
+    sheet["A2"] = "8.8.8.8"
+    sheet["B2"] = "example.com"
+    workbook.save(stream)
+
+    result = extract_ioc_candidates(stream.getvalue(), "evidencia.xlsx")
+    assert result["supported_for_text_extraction"] is True
+    assert "8.8.8.8" in result["extracted_text"]
+    assert {item["indicator"] for item in result["candidates"]} >= {"8.8.8.8", "example.com"}
+    assert all(item["review_required"] for item in result["candidates"])
+    assert all(not item["auto_imported"] for item in result["candidates"])
+
+
+def test_docx_text_is_extracted_without_execution():
+    from io import BytesIO
+    from zipfile import ZipFile
+    from kyros.soc import extract_ioc_candidates
+
+    stream = BytesIO()
+    with ZipFile(stream, "w") as archive:
+        archive.writestr("word/document.xml",
+                         '<w:document xmlns:w="urn:w"><w:body><w:p><w:r><w:t>8.8.8.8</w:t></w:r></w:p></w:body></w:document>')
+    result = extract_ioc_candidates(stream.getvalue(), "evidencia.docx")
+    assert result["supported_for_text_extraction"] is True
+    assert any(item["indicator"] == "8.8.8.8" for item in result["candidates"])
