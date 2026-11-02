@@ -26,3 +26,30 @@ def test_unconfigured_provider_is_rejected(monkeypatch):
     monkeypatch.delenv("KYROS_OTX_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="no configurado"):
         asyncio.run(lookup_indicator("otx", "domain", "example.com"))
+
+
+from kyros.external_intel import build_assessment
+
+
+def test_virustotal_no_detections_is_not_called_safe():
+    report = build_assessment({
+        "provider": "virustotal",
+        "last_analysis_stats": {"malicious": 0, "suspicious": 0, "undetected": 60},
+        "detected_type": "Office Open XML Spreadsheet document",
+        "names": ["kwoxrk.exe"],
+    }, "sha256")
+    assert report["risk"] == "unknown"
+    assert report["verdict"] == "no_detections_not_conclusive"
+    assert "no demuestra seguridad" in report["conclusion"]
+    assert any("extensión no coincide" in item for item in report["findings"])
+
+
+def test_virustotal_malicious_detections_raise_risk():
+    report = build_assessment({
+        "provider": "virustotal",
+        "last_analysis_stats": {"malicious": 7, "suspicious": 0},
+        "detected_type": "Windows executable",
+        "names": ["sample.exe"],
+    }, "sha256")
+    assert report["risk"] == "high"
+    assert report["verdict"] == "detections_reported"
