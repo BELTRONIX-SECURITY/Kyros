@@ -19,7 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context
-from kyros.external_intel import lookup_indicator, provider_status
+from kyros.external_intel import build_assessment, lookup_indicator, provider_status
 
 from kyros.database import (
     add_security_event, add_threat_indicator, correlate_security_events, create_incident,
@@ -249,7 +249,8 @@ async def enrich_threat_indicator(request: ExternalIntelRequest):
             raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
         result = await lookup_indicator(request.provider, request.indicator_type, indicator)
-        return {"result": result, "external_submission": True,
+        assessment = build_assessment(result, request.indicator_type)
+        return {"result": result, "assessment": assessment, "external_submission": True,
                 "submitted": {"type": request.indicator_type, "indicator": indicator},
                 "file_uploaded": False,
                 "note": "Se envió únicamente el indicador autorizado; no se transmitieron archivos ni contexto."}
