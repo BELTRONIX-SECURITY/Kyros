@@ -7,6 +7,7 @@ import io
 import json
 import os
 import secrets
+import time
 from pathlib import Path
 from typing import Literal
 
@@ -32,6 +33,22 @@ from kyros.soc import (MAX_FILE_SIZE, analyze_file, classify_domain, classify_em
                       extract_ioc_candidates, scan_yara)
 
 STATIC_DIR = Path(__file__).parent / "static"
+_PUBLIC_REQUESTS: dict[str, list[float]] = {}
+
+
+def public_analysis_limit(request: Request) -> None:
+    """Small per-process guardrail for anonymous analysis traffic."""
+    now = time.monotonic()
+    client_ip = request.client.host if request.client else "unknown"
+    recent = [stamp for stamp in _PUBLIC_REQUESTS.get(client_ip, []) if now - stamp < 60]
+    if len(recent) >= 15:
+        raise HTTPException(status_code=429, detail="Límite público alcanzado: espera un minuto antes de repetir análisis.")
+    recent.append(now)
+    _PUBLIC_REQUESTS[client_ip] = recent
+    if len(_PUBLIC_REQUESTS) > 2000:
+        for ip, stamps in list(_PUBLIC_REQUESTS.items()):
+            if not stamps or now - stamps[-1] >= 60:
+                _PUBLIC_REQUESTS.pop(ip, None)
 security = HTTPBasic(auto_error=False)
 
 
@@ -332,7 +349,7 @@ async def dashboard_metrics():
     return dashboard_summary()
 
 
-@app.post("/api/analyze/ip")
+@app.post("/api/analyze/ip", dependencies=[Depends(public_analysis_limit)])
 async def analyze_ip(request: IndicatorRequest):
     if request.external_lookup:
         raise HTTPException(status_code=403, detail="El enriquecimiento externo requiere acceso de administrador.")
@@ -354,7 +371,7 @@ async def analyze_ip(request: IndicatorRequest):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/domain")
+@app.post("/api/analyze/domain", dependencies=[Depends(public_analysis_limit)])
 async def analyze_domain(request: IndicatorRequest):
     if request.external_lookup:
         raise HTTPException(status_code=403, detail="Las consultas DNS externas requieren acceso de administrador.")
@@ -372,7 +389,7 @@ async def analyze_domain(request: IndicatorRequest):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/email")
+@app.post("/api/analyze/email", dependencies=[Depends(public_analysis_limit)])
 async def analyze_email(request: IndicatorRequest):
     try:
         result = classify_email(request.indicator)
@@ -381,7 +398,7 @@ async def analyze_email(request: IndicatorRequest):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/file")
+@app.post("/api/analyze/file", dependencies=[Depends(public_analysis_limit)])
 async def analyze_uploaded_file(file: UploadFile = File(...)):
     data = await file.read(MAX_FILE_SIZE + 1)
     await file.close()
