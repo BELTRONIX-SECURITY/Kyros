@@ -50,7 +50,76 @@ def classify_domain(value: str) -> dict[str, Any]:
     }
 
 
-def _file_type(data: bytes) -> str:
+def _ooxml_analysis(data: bytes) -> dict[str, Any] | None:
+    """Identify and inspect Office Open XML containers without extracting or executing them."""
+    import io
+    import zipfile
+    import xml.etree.ElementTree as ET
+
+    if not data.startswith(b"\x50\x4b\x03\x04"):
+        return None
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            entries = archive.infolist()
+            if len(entries) > 2000 or sum(item.file_size for item in entries) > 40 * 1024 * 1024:
+                return {"file_type": "ZIP archive (contenido no inspeccionado: límites excedidos)",
+                        "structure": {"valid_ooxml": False, "inspection": "resource_limit"}}
+            names = {item.filename for item in entries}
+            if "[Content_Types].xml" not in names:
+                return None
+            families = (
+                ("xl/workbook.xml", "Microsoft Excel"),
+                ("word/document.xml", "Microsoft Word"),
+                ("ppt/presentation.xml", "Microsoft PowerPoint"),
+            )
+            match = next(((path, label) for path, label in families if path in names), None)
+            if not match:
+                return None
+            main_part, family = match
+            macro_paths = {"xl/vbaProject.bin", "word/vbaProject.bin", "ppt/vbaProject.bin"}
+            has_macros = bool(names.intersection(macro_paths))
+            extlinks = [name for name in names if name.startswith(("xl/externalLinks/", "word/externalLinks/", "ppt/externalLinks/"))]
+            formulas = 0
+            sheet_count = 0
+            try:
+                root = ET.fromstring(archive.read(main_part)[:2 * 1024 * 1024])
+                if family == "Microsoft Excel":
+                    sheet_count = sum(1 for node in root.iter() if node.tag.endswith("}sheet"))
+                    for name in names:
+                        if name.startswith("xl/worksheets/") and name.endswith(".xml"):
+                            info = archive.getinfo(name)
+                            if info.file_size <= 4 * 1024 * 1024:
+                                xml_data = archive.read(name)
+                                formulas += xml_data.count(b"<f") + xml_data.count(b":f")
+            except (ET.ParseError, KeyError, OSError, zipfile.BadZipFile):
+                return {"file_type": "Office Open XML (estructura no válida)",
+                        "structure": {"valid_ooxml": False, "inspection": "invalid_xml"}}
+            extension = "XLSM" if family == "Microsoft Excel" and has_macros else {
+                "Microsoft Excel": "XLSX", "Microsoft Word": "DOCX",
+                "Microsoft PowerPoint": "PPTX"
+            }[family]
+            return {
+                "file_type": f"{family} ({extension})",
+                "structure": {
+                    "valid_ooxml": True, "family": family, "main_part": main_part,
+                    "entry_count": len(entries),
+                    "sheet_count": sheet_count if family == "Microsoft Excel" else None,
+                    "formulas_present": formulas > 0,
+                    "formula_count_approx": formulas if family == "Microsoft Excel" else None,
+                    "macro_project_present": has_macros, "external_link_parts": len(extlinks),
+                    "inspection": "static_only",
+                    "note": "Macros, fórmulas o enlaces externos son datos estructurales; no demuestran actividad maliciosa."
+                }
+            }
+    except (zipfile.BadZipFile, OSError, ValueError):
+        return {"file_type": "ZIP archive (contenedor no válido)",
+                "structure": {"valid_ooxml": False, "inspection": "invalid_container"}}
+
+
+def _file_type(data: bytes, filename: str | None = None) -> tuple[str, dict[str, Any] | None]:
+    ooxml = _ooxml_analysis(data)
+    if ooxml:
+        return ooxml["file_type"], ooxml.get("structure")
     signatures = [
         (b"\x7fELF", "ELF executable"),
         (b"MZ", "Windows PE/DOS executable (signature only)"),
@@ -58,10 +127,8 @@ def _file_type(data: bytes) -> str:
         (b"\x1f\x8b", "GZIP archive"), (b"\x89PNG\r\n\x1a\n", "PNG image"),
         (b"\xff\xd8\xff", "JPEG image"), (b"SQLite format 3\x00", "SQLite database"),
     ]
-    for signature, label in signatures:
-        if data.startswith(signature):
-            return label
-    return "Unknown / unclassified"
+    detected = next((label for signature, label in signatures if data.startswith(signature)), "Unknown / unclassified")
+    return detected, None
 
 
 def analyze_file(data: bytes, filename: str | None = None) -> dict[str, Any]:
@@ -72,7 +139,8 @@ def analyze_file(data: bytes, filename: str | None = None) -> dict[str, Any]:
     return {
         "filename": PurePath(filename or "uploaded-file").name[:128],
         "size_bytes": len(data), "extension": PurePath(filename or "").suffix.lower()[:16],
-        "file_type": _file_type(data),
+        "file_type": _file_type(data, filename)[0],
+        "structure": _file_type(data, filename)[1],
         "hashes": {
             "sha256": hashlib.sha256(data).hexdigest(),
             "sha1": hashlib.sha1(data).hexdigest(),
