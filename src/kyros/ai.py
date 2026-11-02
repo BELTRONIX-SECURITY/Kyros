@@ -12,7 +12,6 @@ MAX_AI_CONTEXT = 8000
 def ai_configuration() -> dict:
     base_url = os.getenv("KYROS_AI_BASE_URL", "").strip().rstrip("/")
     model = os.getenv("KYROS_AI_MODEL", "").strip()
-    api_key = os.getenv("KYROS_AI_API_KEY", "").strip()
     if not base_url or not model:
         return {"enabled": False, "provider": "not_configured", "model": None}
     parsed = urlparse(base_url)
