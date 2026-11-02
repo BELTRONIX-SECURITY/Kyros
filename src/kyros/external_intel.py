@@ -67,16 +67,48 @@ def build_assessment(result: dict, indicator_type: str) -> dict:
         conclusion = "La presencia o ausencia en OTX no constituye por sí sola una confirmación de amenaza."
     else:
         conclusion = "No hay información suficiente para emitir una conclusión."
+    verdict = ("detections_reported" if provider == "virustotal" and malicious else
+               "no_detections_not_conclusive" if provider == "virustotal" else "reputation_context_only")
+    if provider == "virustotal" and malicious:
+        confidence = "medium" if malicious < 5 else "high"
+        severity = "high" if malicious >= 5 else "medium"
+        status = "probable_threat"
+    elif provider == "virustotal" and suspicious:
+        confidence, severity, status = "low", "medium", "needs_validation"
+    else:
+        confidence, severity, status = "low", "undetermined", "inconclusive"
     return {
+        "analysis_level": "L2_indicator_triage",
         "risk": risk,
-        "verdict": "detections_reported" if provider == "virustotal" and malicious else
-                   "no_detections_not_conclusive" if provider == "virustotal" else "reputation_context_only",
+        "severity": severity if provider == "virustotal" else risk,
+        "confidence": confidence if provider == "virustotal" else "low",
+        "case_status": status if provider == "virustotal" else "context_only",
+        "verdict": verdict,
+        "scope": "Consulta de un único indicador; no equivale a investigación completa del endpoint o incidente.",
+        "facts": findings,
         "findings": findings,
+        "hypotheses": [
+            "Una ausencia de detecciones puede deberse a que el indicador no es conocido, no está analizado o no es detectado por los motores."
+        ] if provider == "virustotal" and not malicious and not suspicious else [],
+        "mitre_attack": {
+            "mapping": "not_justified",
+            "note": "Una consulta de reputación de hash por sí sola no demuestra una táctica o técnica ATT&CK."
+        },
         "recommendations": recommendations,
+        "priority_actions": [
+            {"priority": "P1", "action": item, "validation": "Registrar resultado y evidencia de la comprobación."}
+            for item in recommendations
+        ],
         "conclusion": conclusion,
+        "missing_evidence": [
+            "Telemetría del endpoint y proceso que originó o abrió el archivo.",
+            "Contexto de usuario, equipo, fecha, origen y actividad asociada.",
+            "Resultados locales de antivirus/YARA y revisión de contenido."
+        ],
         "limitations": [
             "La consulta cubre únicamente el indicador autorizado; no se envió el archivo.",
             "La reputación externa puede estar incompleta o desactualizada.",
+            "No se consultaron relaciones ni comportamiento salvo que se indique expresamente.",
             "La conclusión debe correlacionarse con telemetría y contexto del entorno."
         ],
     }
