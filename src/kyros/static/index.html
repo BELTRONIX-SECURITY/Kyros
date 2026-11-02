@@ -218,65 +218,65 @@ function renderResultValue(parent,key,value,depth=0){
  const item=document.createElement("div");item.className="result-item";const label=document.createElement("span");label.className="result-label";label.textContent=resultLabel(key);const val=document.createElement("div");val.className="result-value";val.textContent=String(value);item.append(label,val);parent.append(item)
 }
 function setOutput(id,value){
- const el=document.getElementById(id);el.replaceChildren();
- if(typeof value==="string"&&value.length>180){
-  el.classList.add("result-view");
-  const tabs=document.createElement("div");tabs.className="result-tabs";
-  const summaryBtn=document.createElement("button");summaryBtn.className="result-tab active";summaryBtn.textContent="Resumen";
-  const rawBtn=document.createElement("button");rawBtn.className="result-tab";rawBtn.textContent="Ver respuesta técnica completa (JSON)";
-  const summaryPanel=document.createElement("div");summaryPanel.className="result-panel";
+ const el=document.getElementById(id);el.replaceChildren();el.classList.add("result-view");
+ if(typeof value==="string"){
   const report=document.createElement("div");report.className="result-section";
-  value.split("\\n").forEach(line=>{const p=document.createElement("p");p.style.whiteSpace="pre-wrap";p.style.margin="8px 0";p.textContent=line;report.append(p)});
-  summaryPanel.append(report);
-  const rawPanel=document.createElement("div");rawPanel.className="result-panel";rawPanel.hidden=true;
-  const pre=document.createElement("pre");pre.textContent=JSON.stringify({analysis:value},null,2);rawPanel.append(pre);
-  summaryBtn.addEventListener("click",()=>{summaryPanel.hidden=false;rawPanel.hidden=true;summaryBtn.classList.add("active");rawBtn.classList.remove("active")});
-  rawBtn.addEventListener("click",()=>{summaryPanel.hidden=true;rawPanel.hidden=false;rawBtn.classList.add("active");summaryBtn.classList.remove("active")});
-  tabs.append(summaryBtn,rawBtn);el.append(tabs,summaryPanel,rawPanel);
-  const n=document.createElement("div");n.className="note";n.textContent="Evaluación orientativa: valida evidencias y contexto antes de declarar un incidente.";el.append(n);return
+  const title=document.createElement("h4");title.textContent="Resultado";report.append(title);
+  const p=document.createElement("p");p.style.whiteSpace="pre-wrap";p.textContent=value;report.append(p);el.append(report);
+  return;
  }
- if(!value||typeof value!=="object"){el.classList.remove("result-view");el.textContent=String(value??"");return}
- el.classList.add("result-view");
- const head=document.createElement("div");head.className="result-head";const title=document.createElement("div");title.className="result-title";title.textContent=value.analysis_type?resultLabel(value.analysis_type)+" · Resultado del análisis":(value.status?"Resultado · "+String(value.status):"Resultado del análisis");head.append(title);if(value.risk){const badge=document.createElement("span");badge.className="result-status "+resultTone("risk",value.risk);badge.textContent="Riesgo: "+String(value.risk);head.append(badge)}el.append(head);
- const tabs=document.createElement("div");tabs.className="result-tabs";
- const summaryBtn=document.createElement("button");summaryBtn.className="result-tab active";summaryBtn.textContent="Resumen";
- const rawBtn=document.createElement("button");rawBtn.className="result-tab";rawBtn.textContent="Ver respuesta técnica completa (JSON)";
- const summaryPanel=document.createElement("div");summaryPanel.className="result-panel";
- const assessment=value.assessment&&typeof value.assessment==="object"?value.assessment:null;
- const executive=document.createElement("div");executive.className="result-section";
- const executiveTitle=document.createElement("h4");executiveTitle.textContent="Resumen ejecutivo";executive.append(executiveTitle);
- const narrative=document.createElement("p");narrative.style.whiteSpace="pre-wrap";narrative.style.margin="8px 0";
- if(typeof value.assessment==="string") narrative.textContent=value.assessment;
- else if(assessment){
-  const conclusion=assessment.conclusion||assessment.verdict||assessment.summary||assessment.executive_summary;
-  narrative.textContent=conclusion?String(conclusion):"Se ha generado una evaluación estructurada. Revisa los hallazgos, evidencias y recomendaciones que aparecen a continuación.";
- } else if(value.file_type){
-  const yara=value.yara&&Array.isArray(value.yara.matches)?value.yara.matches.length:0;
-  narrative.textContent="Se realizó un triaje estático del archivo "+String(value.filename||"analizado")+". Tipo detectado: "+String(value.file_type)+". Riesgo: "+String(value.risk||"sin determinar")+". "+(yara?"YARA identificó "+yara+" coincidencia(s), que requieren validación contextual.":"No hay coincidencias YARA disponibles o la inspección YARA no está configurada.")+" El archivo no se ejecutó ni se envió a terceros.";
- } else if(value.indicator){
-  const kind=String(value.type||value.analysis_type||"indicador");
-  const scope=value.scope? " Ámbito: "+String(value.scope)+".":"";
-  narrative.textContent="Se validó localmente el formato del indicador "+String(value.indicator)+" ("+kind+"). Riesgo: "+String(value.risk||"sin determinar")+"."+scope+" "+String(typeof value.assessment==="string"?value.assessment:"No se han confirmado actividad maliciosa ni reputación con este análisis básico.");
- } else {
-  narrative.textContent="Análisis completado. Revisa los datos y evidencias disponibles; la respuesta por sí sola no confirma un incidente de seguridad.";
- }
- executive.append(narrative);
- if(assessment){
-  const summaryFields=["analysis_level","risk","severity","confidence","case_status","verdict","conclusion","facts","recommendations","missing_evidence"];
-  const summaryData={};summaryFields.forEach(k=>{if(assessment[k]!==undefined)summaryData[k]=assessment[k]});
-  renderResultValue(executive,"Detalle de evaluación",summaryData);
- }
- summaryPanel.append(executive);
+ if(!value||typeof value!=="object"){el.textContent=String(value??"");return}
+ const head=document.createElement("div");head.className="result-head";
+ const title=document.createElement("div");title.className="result-title";
+ title.textContent=value.analysis_type?resultLabel(value.analysis_type)+" · Resultado del análisis":(value.status?"Resultado · "+String(value.status):"Resultado del análisis");
+ head.append(title);
+ if(value.risk){const badge=document.createElement("span");badge.className="result-status "+resultTone("risk",value.risk);badge.textContent="Riesgo: "+String(value.risk);head.append(badge)}
+ el.append(head);
  const detailSection=document.createElement("div");detailSection.className="result-section";
  const detailTitle=document.createElement("h4");detailTitle.textContent="Datos del análisis";detailSection.append(detailTitle);
  Object.entries(value).filter(([k])=>!["analysis_type","assessment"].includes(k)).forEach(([k,v])=>renderResultValue(detailSection,k,v));
- summaryPanel.append(detailSection);
- const note=document.createElement("div");note.className="note";note.textContent="Evaluación orientativa: valida evidencias, contexto y falsos positivos antes de declarar un incidente.";summaryPanel.append(note);
- const rawPanel=document.createElement("div");rawPanel.className="result-panel";rawPanel.hidden=true;
- const pre=document.createElement("pre");pre.textContent=JSON.stringify(value,null,2);rawPanel.append(pre);
- summaryBtn.addEventListener("click",()=>{summaryPanel.hidden=false;rawPanel.hidden=true;summaryBtn.classList.add("active");rawBtn.classList.remove("active")});
- rawBtn.addEventListener("click",()=>{summaryPanel.hidden=true;rawPanel.hidden=false;rawBtn.classList.add("active");summaryBtn.classList.remove("active")});
- tabs.append(summaryBtn,rawBtn);el.append(tabs,summaryPanel,rawPanel)
+ el.append(detailSection);
+ const summary=document.createElement("div");summary.className="result-section";
+ const summaryTitle=document.createElement("h4");summaryTitle.textContent="Conclusión del análisis";summary.append(summaryTitle);
+ const narrative=document.createElement("p");narrative.style.whiteSpace="pre-wrap";narrative.style.margin="8px 0";
+ const assessment=value.assessment;
+ const assessmentObject=assessment&&typeof assessment==="object"?assessment:null;
+ const conclusion=assessmentObject&&(assessmentObject.conclusion||assessmentObject.verdict||assessmentObject.summary||assessmentObject.executive_summary);
+ const risk=String(value.risk||((assessmentObject&&assessmentObject.risk)||"unknown")).toLowerCase();
+ const yaraMatches=value.yara&&Array.isArray(value.yara.matches)?value.yara.matches.length:0;
+ if(conclusion){
+  narrative.textContent=String(conclusion);
+ } else if(typeof assessment==="string"&&assessment.trim()){
+  narrative.textContent=assessment.trim();
+ } else if(value.file_type){
+  if(yaraMatches>0){
+   narrative.textContent="ALERTA DE SEGURIDAD: el análisis estático ha identificado "+yaraMatches+" coincidencia(s) de YARA en el archivo. Este resultado requiere validación manual y análisis contextual; no constituye por sí solo confirmación de malware. El archivo no se ejecutó ni se envió a terceros.";
+  } else {
+   narrative.textContent="RESULTADO DEL ANÁLISIS: no se han observado indicios de amenaza en las comprobaciones estáticas realizadas. Sin embargo, el riesgo permanece sin determinar porque no se ha ejecutado el archivo ni se dispone necesariamente de firmas antivirus o reglas YARA configuradas. No debe interpretarse como garantía de que el archivo sea seguro.";
+  }
+ } else if(value.indicator){
+  const kind=String(value.type||value.analysis_type||"indicador");
+  if(risk==="high"||risk==="critical"||risk==="malicious"){
+   narrative.textContent="ALERTA DE SEGURIDAD: el indicador presenta una clasificación de riesgo "+risk+". Se recomienda validar la fuente, revisar la actividad asociada y correlacionar con otras evidencias antes de confirmar un incidente.";
+  } else if(risk==="low"||risk==="clean"){
+   narrative.textContent="RESULTADO DEL ANÁLISIS: las comprobaciones disponibles no muestran indicios relevantes de amenaza para este "+kind+". Esta conclusión se limita a las fuentes y verificaciones realizadas; conviene correlacionar con registros y contexto del entorno.";
+  } else {
+   narrative.textContent="RESULTADO DEL ANÁLISIS: no se han identificado indicios de amenaza con las comprobaciones básicas realizadas al indicador "+String(value.indicator)+". Su reputación y actividad maliciosa no están confirmadas, por lo que el riesgo permanece SIN DETERMINAR. Para una conclusión más sólida, realiza enriquecimiento de inteligencia autorizado y correlaciona con eventos del entorno.";
+  }
+ } else {
+  narrative.textContent="RESULTADO DEL ANÁLISIS: no se han encontrado evidencias suficientes para confirmar una amenaza. Mantén la clasificación como no determinada hasta validar los datos, el contexto y las fuentes disponibles.";
+ }
+ summary.append(narrative);
+ if(assessmentObject){
+  const summaryFields=["analysis_level","risk","severity","confidence","case_status","verdict","facts","recommendations","missing_evidence"];
+  const summaryData={};summaryFields.forEach(k=>{if(assessmentObject[k]!==undefined)summaryData[k]=assessmentObject[k]});
+  if(Object.keys(summaryData).length)renderResultValue(summary,"Detalle de evaluación",summaryData);
+ }
+ const note=document.createElement("div");note.className="note";note.textContent="Conclusión orientativa basada únicamente en las comprobaciones mostradas. La ausencia de hallazgos no demuestra por sí sola que un indicador o archivo sea seguro.";summary.append(note);
+ el.append(summary);
+ const raw=document.createElement("details");raw.className="result-raw";
+ const rawTitle=document.createElement("summary");rawTitle.textContent="Ver respuesta técnica completa (JSON)";raw.append(rawTitle);
+ const pre=document.createElement("pre");pre.textContent=JSON.stringify(value,null,2);raw.append(pre);el.append(raw);
 }
 let adminAuthHeader="";
 async function api(url,options={}){const headers={...(options.headers||{})};if(adminAuthHeader)headers.Authorization=adminAuthHeader;const r=await fetch(url,{...options,headers});let data;try{data=await r.json()}catch{data={detail:"Respuesta no válida del servidor"}}if(!r.ok)throw new Error(data.detail||("HTTP "+r.status));return data}
