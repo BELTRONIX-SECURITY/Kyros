@@ -83,7 +83,7 @@ Abre http://127.0.0.1:8000. En desarrollo, la API interactiva está en `/docs`. 
 - **File Intelligence:** límite de 10 MB; hashes SHA-256, SHA-1 y MD5; identificación estática de formatos y análisis estructural de Office Open XML.
 - **Threat Intelligence:** catálogo local de IP, dominios, correos y SHA-256; importación CSV/XLSX; análisis estático de archivos; extracción local de texto desde TXT/LOG/CSV/JSON/XML/YAML, XLSX/XLSM, DOCX/DOCM y PPTX/PPTM; candidatos IOC sujetos a aprobación manual; enriquecimiento externo opcional de un indicador por consulta mediante VirusTotal (SHA-256), AbuseIPDB (IP pública) y AlienVault OTX (IP/dominio/SHA-256).
 - **Event Correlation:** registro manual de eventos y coincidencia exacta con el catálogo IOC.
-- **Incident Center:** creación manual de casos y estados abierto, reconocido y cerrado.
+- **Incident Center / expediente SOC L2:** creación manual de casos, estados abierto/reconocido/cerrado, cronología de investigación y registro de referencias de evidencia con SHA-256 opcional. El expediente guarda metadatos y referencias, nunca los bytes de evidencias; los hitos y evidencias son aportados manualmente y no constituyen telemetría automática.
 - **Historial:** consultas de análisis y métricas almacenadas en SQLite.
 - **Copiloto IA:** opcional; solo transmite el texto que el analista pega y autoriza expresamente.
 
@@ -154,6 +154,17 @@ Utiliza exclusivamente los siguientes datos de demostración y archivos de texto
 10. Comprobar el historial y el dashboard. Recordar que los datos pueden desaparecer al reiniciar o desplegar.
 
 No habilites consultas externas ni el copiloto IA durante la primera ronda de pruebas. Una vez validados los flujos locales, cada integración externa debe probarse por separado y con consentimiento.
+
+### Expediente de investigación de incidentes
+
+Cada incidente dispone de un expediente consultable mediante la API protegida:
+
+- `GET /api/incidents/{id}/case`: devuelve el incidente, cronología y registro de evidencias.
+- `POST /api/incidents/{id}/timeline`: añade un hito manual (alerta, observación, contención, erradicación, recuperación o comunicación).
+- `POST /api/incidents/{id}/evidence`: registra tipo, referencia, fuente, notas y SHA-256 opcional.
+- La interfaz Incident Center permite abrir el expediente, añadir hitos y registrar referencias.
+- No se adjuntan ni almacenan archivos originales. Las referencias deben apuntar a repositorios controlados por el operador.
+- No hay todavía cadena de custodia criptográfica, firma de eventos ni auditoría inmutable. SQLite en Render Free sigue siendo efímero.
 
 ## Pendiente antes de producción
 
