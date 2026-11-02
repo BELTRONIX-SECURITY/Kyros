@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from kyros.database import (
+from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context\n\nfrom kyros.database import (
     add_security_event, add_threat_indicator, correlate_security_events, create_incident,
     dashboard_summary, list_analyses, list_incidents, list_security_events, list_threat_indicators,
     save_analysis, update_incident_status,
@@ -148,7 +148,7 @@ app = FastAPI(
 app.add_middleware(SecurityHeadersMiddleware)
 
 
-class IndicatorRequest(BaseModel):
+class AIAnalysisRequest(BaseModel):\n    context: str = Field(min_length=1, max_length=MAX_AI_CONTEXT)\n    external_consent: bool = False\n\n\nclass IndicatorRequest(BaseModel):
     indicator: str = Field(min_length=1, max_length=253)
     external_lookup: bool = False
 
@@ -184,6 +184,30 @@ class IncidentUpdate(BaseModel):
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "Kyros SOC", "version": "0.6.0"}
+
+
+@app.get("/api/ai/status", dependencies=[Depends(require_auth)])
+async def ai_status():
+    return ai_configuration()
+
+
+@app.post("/api/ai/analyze", dependencies=[Depends(require_auth)])
+async def ai_analyze(request: AIAnalysisRequest):
+    if not request.external_consent:
+        raise HTTPException(
+            status_code=400,
+            detail="Debes confirmar que autorizas enviar este texto al proveedor IA configurado.",
+        )
+    if not ai_configuration()["enabled"]:
+        raise HTTPException(status_code=503, detail="El copiloto IA no está configurado.")
+    try:
+        return await analyze_soc_context(request.context)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="El proveedor IA no está disponible o rechazó la solicitud.") from exc
 
 
 @app.get("/api/dashboard/summary", dependencies=[Depends(require_auth)])
