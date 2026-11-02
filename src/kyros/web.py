@@ -350,15 +350,15 @@ async def dashboard_metrics():
 
 
 @app.post("/api/analyze/ip", dependencies=[Depends(public_analysis_limit)])
-async def analyze_ip(request: IndicatorRequest):
-    if request.external_lookup:
+async def analyze_ip(payload: IndicatorRequest, request: Request):
+    if payload.external_lookup:
         try:
             require_auth(request)
         except HTTPException as exc:
             raise HTTPException(status_code=403, detail="El enriquecimiento externo requiere acceso de administrador.") from exc
     try:
-        result = classify_ip(request.indicator)
-        if request.external_lookup:
+        result = classify_ip(payload.indicator)
+        if payload.external_lookup:
             if result["scope"] != "public":
                 result["external_lookup_note"] = "Consulta externa omitida: solo se consultan direcciones IP públicas."
             else:
@@ -375,15 +375,15 @@ async def analyze_ip(request: IndicatorRequest):
 
 
 @app.post("/api/analyze/domain", dependencies=[Depends(public_analysis_limit)])
-async def analyze_domain(request: IndicatorRequest):
-    if request.external_lookup:
+async def analyze_domain(payload: IndicatorRequest, request: Request):
+    if payload.external_lookup:
         try:
             require_auth(request)
         except HTTPException as exc:
             raise HTTPException(status_code=403, detail="Las consultas DNS externas requieren acceso de administrador.") from exc
     try:
-        result = classify_domain(request.indicator)
-        if request.external_lookup:
+        result = classify_domain(payload.indicator)
+        if payload.external_lookup:
             result["external_lookup"] = True
             result["dns"] = await asyncio.to_thread(lookup_domain_dns, result["indicator"])
             result["external_lookup_note"] = (
