@@ -1,81 +1,111 @@
-# Kyros
+# Kyros SOC
 
-Herramienta OSINT automatizada para **correos electrónicos**, escrita en Python. Consulta varias fuentes en paralelo y devuelve un informe en terminal o en JSON.
+**Kyros** es una plataforma de análisis defensivo y apoyo a operaciones SOC, desarrollada en Python. Combina una CLI OSINT con una interfaz web FastAPI para análisis local de indicadores, triaje estático de archivos, catálogo IOC, correlación manual y gestión de incidentes.
 
-> Este proyecto está escrito desde cero.
+> Estado: MVP 0.6.0 desplegado en Render Free para pruebas controladas. No es una plataforma SIEM de producción ni sustituye a un EDR, antivirus o sandbox.
 
-## Qué hace
+## Funcionalidades actuales
 
-| Servicio | Información | API key |
-|---|---|---|
-| DNS | MX, SPF y DMARC del dominio | No |
-| ipapi.co | Ubicación y organización del servidor | No |
-| Gravatar | Perfil público y cuentas verificadas | No |
-| emailrep.io | Reputación, perfiles y filtraciones | Opcional |
-| hunter.io | Correos relacionados del dominio | Sí |
-| HaveIBeenPwned | Brechas de datos donde aparece el correo | Sí |
+| Módulo | Capacidades |
+|---|---|
+| Dashboard | Métricas del historial y casos registrados |
+| IP Intelligence | Clasificación IPv4/IPv6 local; enriquecimiento geográfico/ASN opcional y con consentimiento |
+| Domain Intelligence | Validación local; consultas DNS A, AAAA, MX, TXT y DMARC opcionales |
+| Email Intelligence | Validación y normalización local; no consulta reputación |
+| File Intelligence | Hashes MD5/SHA-1/SHA-256, identificación estática y revisión estructural de documentos Office |
+| Threat Intelligence | Catálogo IOC local, importación CSV/XLSX y extracción de candidatos desde texto |
+| Event Correlation | Registro manual y coincidencia exacta contra el catálogo IOC local |
+| Incident Center | Creación y seguimiento manual de casos |
+| Copiloto IA | Opcional; requiere configuración y consentimiento explícito para enviar el texto introducido |
+| Historial | Registros locales de análisis y actividad |
 
-Los servicios sin API key configurada se omiten; un servicio que falle nunca rompe a los demás.
+Los indicadores extraídos de archivos son candidatos que requieren revisión humana. Las coincidencias IOC no confirman incidentes. No existen todavía conectores SIEM/EDR activos ni detección automática en tiempo real.
 
-## Instalación
+## Despliegue de pruebas
+
+- Aplicación: https://kyros-soc.onrender.com
+- Repositorio: https://github.com/troytechnology/Kyros
+- Rama desplegada: `main`
+- Servicio: Render Web Service, plan Free, región Frankfurt.
+- Health check: `/api/health`
+
+Render está configurado para desplegar automáticamente los nuevos commits de `main`. La interfaz y los endpoints protegidos requieren HTTP Basic. Las credenciales se configuran como variables del servicio en Render; nunca deben incluirse en el repositorio.
+
+### Limitaciones del entorno gratuito
+
+La base SQLite se guarda en `/tmp/kyros_soc.sqlite3`. El almacenamiento de Render Free es efímero: el historial, los IOC y los incidentes pueden perderse al reiniciar o desplegar. No se debe utilizar para datos operativos importantes ni como almacenamiento de producción.
+
+No se ha contratado disco persistente, base de datos ni otro recurso de pago. No añadas recursos ni actives facturación para ejecutar estas pruebas.
+
+## Prueba local
+
+Requisitos: Python 3.10 o superior.
 
 ```bash
 git clone https://github.com/troytechnology/Kyros.git
 cd Kyros
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
-## Configuración
+Configura credenciales de prueba antes de iniciar la interfaz. La contraseña debe tener al menos 16 caracteres.
 
-Copia `config.example.yaml` a `~/.kyros.yaml` y rellena las claves que tengas, o usa variables de entorno: `KYROS_HUNTER_KEY`, `KYROS_EMAILREP_KEY`, `KYROS_HIBP_KEY`.
-
-## Uso CLI
-
+Linux/macOS:
 ```bash
-kyros ejemplo@dominio.com
-kyros ejemplo@dominio.com -o informe.json
-kyros ejemplo@dominio.com --json
-kyros ejemplo@dominio.com --config ./config.yaml --timeout 20
-```
-
-## Interfaz web Kyros SOC
-
-La rama `develop` incorpora una interfaz web inicial y una API FastAPI para el triaje defensivo local:
-
-```bash
-pip install -e ".[dev]"
+export KYROS_AUTH_USERNAME="soc-admin"
+export KYROS_AUTH_PASSWORD="sustituye-por-una-clave-de-prueba-larga"
 kyros-web
 ```
 
-Abre http://127.0.0.1:8000 y consulta la API en http://127.0.0.1:8000/docs. Incluye clasificación de IP, validación de dominios y análisis estático inicial de archivos (hashes y firmas básicas; límite 10 MB). Los archivos no se ejecutan ni se envían a terceros. Las consultas externas están desactivadas.
+Windows PowerShell:
+```powershell
+$env:KYROS_AUTH_USERNAME = "soc-admin"
+$env:KYROS_AUTH_PASSWORD = "sustituye-por-una-clave-de-prueba-larga"
+kyros-web
+```
 
-Consulta [README_SOC.md](README_SOC.md) para el alcance, limitaciones y siguientes fases. Este MVP no incorpora todavía reputación externa, YARA/ClamAV, persistencia, correlación SIEM ni gestión de incidentes. No expongas la API fuera del equipo local sin controles de autenticación y seguridad adicionales.
+Abre http://127.0.0.1:8000. La documentación interactiva de la API está disponible en `/docs` únicamente en entorno de desarrollo.
+
+## Pruebas automatizadas
+
+```bash
+ruff check .
+pytest -q
+```
+
+GitHub Actions ejecuta lint y pruebas para las versiones de Python configuradas en los workflows.
+
+## Privacidad y seguridad
+
+- El análisis de archivos es estático: Kyros no ejecuta los archivos ni los envía automáticamente a terceros.
+- El historial de archivos conserva hashes y metadatos, no el contenido ni el nombre original.
+- Las consultas IP y DNS externas están desactivadas por defecto y requieren una acción expresa.
+- El copiloto IA es opcional y solo recibe el texto que el analista pega y autoriza enviar.
+- La autenticación actual es HTTP Basic compartida; no ofrece cuentas individuales, MFA ni SSO.
+- No se deben introducir credenciales, tokens, datos personales ni muestras confidenciales en el entorno público de pruebas.
+
+Consulta [README_SOC.md](README_SOC.md) para el alcance detallado, configuración, formatos de importación y limitaciones.
+
+## CLI OSINT
+
+La CLI original permite consultar fuentes OSINT para direcciones de correo. Algunas integraciones requieren claves API propias y pueden transmitir la dirección consultada al proveedor correspondiente. Revisa sus condiciones y la configuración antes de utilizarlas.
+
+```bash
+kyros ejemplo@dominio.com
+kyros ejemplo@dominio.com --json
+kyros ejemplo@dominio.com -o informe.json
+```
 
 ## Docker
 
-```bash
-docker build -t kyros .
-docker run --rm -e KYROS_HIBP_KEY=xxx kyros ejemplo@dominio.com
-```
+El Dockerfile actual mantiene el punto de entrada de la CLI. La ejecución web en contenedor y la persistencia de SQLite se prepararán como parte de la portabilidad futura al servidor propio; no forman parte del despliegue actual de Render.
 
-## Añadir un servicio OSINT nuevo
+## Uso responsable y licencia
 
-1. Crea `src/kyros/services/mi_servicio.py` con una clase que herede de `Service` e implemente `async def run(self, ctx)`.
-2. Si necesita clave, define `key_name = "mi_servicio"` (y añádelo a `KNOWN_KEYS` en `config.py`).
-3. Regístralo en `ALL_SERVICES` dentro de `services/__init__.py`.
+Utiliza Kyros únicamente sobre activos propios o con autorización. Respeta las condiciones de los proveedores y la normativa aplicable, incluido el RGPD.
 
-## Tests
-
-```bash
-pytest
-ruff check .
-```
-
-## Uso responsable
-
-Usa esta herramienta solo sobre direcciones propias o con autorización expresa, y respetando los términos de cada servicio y la normativa de protección de datos aplicable (por ejemplo, el RGPD).
-
-## Licencia
-
-MIT. Sustituye `[Libardo Beltran]` en `LICENSE`.
+Licencia MIT. Consulta [LICENSE](LICENSE).
