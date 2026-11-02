@@ -99,6 +99,6 @@ def test_xlsx_extension_mismatch_is_reported():
 
 
 def test_invalid_zip_is_not_misidentified_as_excel():
-    result = analyze_file(b"PK\\x03\\x04not-a-valid-zip", "archivo.xlsx")
+    result = analyze_file(bytes([0x50, 0x4b, 0x03, 0x04]) + b"not-a-valid-zip", "archivo.xlsx")
     assert result["file_type"] == "ZIP archive (contenedor no válido)"
     assert result["structure"]["valid_ooxml"] is False
