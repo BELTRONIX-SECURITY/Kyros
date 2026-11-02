@@ -19,6 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context
+from kyros.external_intel import lookup_indicator, provider_status
 
 from kyros.database import (
     add_security_event, add_threat_indicator, correlate_security_events, create_incident,
@@ -160,6 +161,13 @@ class IndicatorRequest(BaseModel):
     external_lookup: bool = False
 
 
+class ExternalIntelRequest(BaseModel):
+    provider: Literal["virustotal", "abuseipdb", "otx"]
+    indicator_type: Literal["ip", "domain", "sha256"]
+    indicator: str = Field(min_length=3, max_length=253)
+    external_consent: bool = False
+
+
 class IncidentCreate(BaseModel):
     title: str = Field(min_length=4, max_length=160)
     description: str = Field(default="", max_length=2000)
@@ -215,6 +223,46 @@ async def ai_analyze(request: AIAnalysisRequest):
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail="El proveedor IA no está disponible o rechazó la solicitud.") from exc
+
+
+@app.get("/api/threat-intel/providers", dependencies=[Depends(require_auth)])
+async def threat_intel_providers():
+    return {"providers": provider_status(), "note": "Solo se consulta un indicador por solicitud; no se suben archivos."}
+
+
+@app.post("/api/threat-intel/enrich", dependencies=[Depends(require_auth)])
+async def enrich_threat_indicator(request: ExternalIntelRequest):
+    if not request.external_consent:
+        raise HTTPException(status_code=400, detail="Debes autorizar expresamente el envío del indicador al proveedor.")
+    indicator = request.indicator.strip()
+    if request.indicator_type == "ip":
+        try:
+            ip_result = classify_ip(indicator)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if ip_result.get("scope") != "public":
+            raise HTTPException(status_code=422, detail="Solo se permite enriquecer IP públicas.")
+    if request.indicator_type == "domain":
+        try:
+            classify_domain(indicator)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        result = await lookup_indicator(request.provider, request.indicator_type, indicator)
+        return {"result": result, "external_submission": True,
+                "submitted": {"type": request.indicator_type, "indicator": indicator},
+                "file_uploaded": False,
+                "note": "Se envió únicamente el indicador autorizado; no se transmitieron archivos ni contexto."}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="El proveedor no tiene un resultado para este indicador.") from exc
+        raise HTTPException(status_code=502, detail="El proveedor rechazó la consulta o no está disponible.") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="No se pudo completar la consulta externa.") from exc
 
 
 @app.get("/api/dashboard/summary", dependencies=[Depends(require_auth)])
