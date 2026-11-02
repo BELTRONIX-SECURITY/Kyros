@@ -22,8 +22,9 @@ from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context
 from kyros.external_intel import build_assessment, lookup_available_sources, lookup_indicator, provider_status
 
 from kyros.database import (
-    add_security_event, add_threat_indicator, correlate_security_events, create_incident,
-    dashboard_summary, list_analyses, list_incidents, list_security_events, list_threat_indicators,
+    add_incident_evidence, add_incident_timeline, add_security_event, add_threat_indicator,
+    correlate_security_events, create_incident, dashboard_summary, get_incident_case,
+    list_analyses, list_incidents, list_security_events, list_threat_indicators,
     save_analysis, update_incident_status,
 )
 from kyros.soc import (MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip,
@@ -194,6 +195,20 @@ class SecurityEventCreate(BaseModel):
 
 class IncidentUpdate(BaseModel):
     status: Literal["open", "acknowledged", "closed"]
+
+class IncidentTimelineCreate(BaseModel):
+    category: Literal["alert", "observation", "containment", "eradication", "recovery", "communication", "other"] = "observation"
+    description: str = Field(min_length=3, max_length=2000)
+    source: str = Field(default="manual", max_length=100)
+    event_time: str = Field(default="", max_length=40)
+
+
+class IncidentEvidenceCreate(BaseModel):
+    evidence_type: Literal["log", "screenshot_reference", "file_hash", "event_id", "ticket", "other"] = "other"
+    reference: str = Field(min_length=1, max_length=500)
+    sha256: str = Field(default="", max_length=64)
+    source: str = Field(default="manual", max_length=100)
+    notes: str = Field(default="", max_length=2000)
 
 
 @app.get("/api/health")
@@ -520,6 +535,40 @@ async def change_incident(incident_id: int, request: IncidentUpdate):
     if not update_incident_status(incident_id, request.status):
         raise HTTPException(status_code=404, detail="Incidente no encontrado.")
     return {"id": incident_id, "status": request.status}
+
+
+@app.get("/api/incidents/{incident_id}/case", dependencies=[Depends(require_auth)])
+async def incident_case(incident_id: int):
+    case = get_incident_case(incident_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado.")
+    return case
+
+
+@app.post("/api/incidents/{incident_id}/timeline", dependencies=[Depends(require_auth)])
+async def add_incident_timeline_entry(incident_id: int, request: IncidentTimelineCreate):
+    entry_id = add_incident_timeline(
+        incident_id, request.category, request.description, request.source, request.event_time
+    )
+    if entry_id is None:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado.")
+    return {"id": entry_id, "incident_id": incident_id, "stored_locally": True}
+
+
+@app.post("/api/incidents/{incident_id}/evidence", dependencies=[Depends(require_auth)])
+async def add_incident_evidence_item(incident_id: int, request: IncidentEvidenceCreate):
+    digest = request.sha256.strip().lower()
+    if digest:
+        import re
+        if not re.fullmatch(r"[a-f0-9]{64}", digest):
+            raise HTTPException(status_code=422, detail="El SHA-256 debe contener 64 caracteres hexadecimales.")
+    evidence_id = add_incident_evidence(
+        incident_id, request.evidence_type, request.reference, digest, request.source, request.notes
+    )
+    if evidence_id is None:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado.")
+    return {"id": evidence_id, "incident_id": incident_id, "stored_locally": True,
+            "evidence_bytes_stored": False}
 
 
 @app.get("/", include_in_schema=False, dependencies=[Depends(require_auth)])
