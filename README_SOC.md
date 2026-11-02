@@ -58,7 +58,7 @@ No introduzcas datos de pago para esta configuración. Si Render muestra un cost
 - Email Intelligence: validación local de sintaxis y normalización del dominio, sin consultar ni transmitir la dirección.
 - Threat Intelligence: catálogo IOC local para IP, dominios, correos y hashes SHA-256, con fuente y confianza documentadas; importación local de CSV y Excel .xlsx validada de hasta 5000 filas y 2 MB (primera hoja; .xls no soportado).
 - Event Correlation: registro manual de eventos y coincidencia exacta contra el catálogo IOC local; los resultados son pistas, no incidentes confirmados.
-- File Intelligence: tamaño, tipo por firma y hashes SHA-256/SHA-1/MD5; límite de 10 MB; sin ejecución ni envío externo. Incluye interfaz opcional para reglas YARA locales mediante `KYROS_YARA_RULES` e instalación `pip install -e '.[yara]'`; no incluye reglas propias ni ClamAV.
+- File Intelligence: límite de 10 MB; hashes SHA-256/SHA-1/MD5; identificación estructural de Office Open XML (XLSX/XLSM, DOCX/DOCM, PPTX/PPTM); inspección estática de hojas, fórmulas, macros y partes de enlaces externos. Límites internos: 2000 entradas ZIP, 40 MB expandidos, 8 MB por entrada y ratio de compresión máximo 200:1 para entradas mayores de 1 MB. No extrae ni ejecuta archivos. YARA local opcional mediante `KYROS_YARA_RULES` e instalación `pip install -e '.[yara]'`; no incluye reglas propias, ClamAV ni sandbox. Macros, fórmulas y enlaces externos no son veredictos de malware.
 - Incident Center: creación manual de casos, severidad y estados abierto/reconocido/cerrado.
 - Historial: consulta de análisis y métricas sobre SQLite.
 - Estado e integraciones: capacidades disponibles y pendientes.
