@@ -28,7 +28,10 @@ Configura desde el panel de Render, sin publicar sus valores:
 | `KYROS_AUTH_PASSWORD` | Contraseña exclusiva de al menos 16 caracteres |
 | `KYROS_AI_BASE_URL` | Opcional; endpoint compatible con OpenAI |
 | `KYROS_AI_MODEL` | Opcional; modelo del proveedor |
-| `KYROS_AI_API_KEY` | Opcional; secreto del proveedor |
+| `KYROS_AI_API_KEY` | Opcional; secreto del proveedor IA |
+| `KYROS_VT_API_KEY` | Opcional; API key de VirusTotal para consultas SHA-256 |
+| `KYROS_ABUSEIPDB_API_KEY` | Opcional; API key de AbuseIPDB para IP públicas |
+| `KYROS_OTX_API_KEY` | Opcional; API key de AlienVault OTX para IP, dominios y SHA-256 |
 
 La autenticación no se considera configurada si falta el usuario o la contraseña no alcanza la longitud mínima; la aplicación responde con error 503 en rutas protegidas. No compartas las credenciales en chats, capturas ni archivos del repositorio.
 
@@ -78,7 +81,7 @@ Abre http://127.0.0.1:8000. En desarrollo, la API interactiva está en `/docs`. 
 - **Domain Intelligence:** validación local y consultas DNS opcionales A, AAAA, MX, TXT y DMARC.
 - **Email Intelligence:** validación de sintaxis y normalización local; no verifica existencia del buzón ni reputación.
 - **File Intelligence:** límite de 10 MB; hashes SHA-256, SHA-1 y MD5; identificación estática de formatos y análisis estructural de Office Open XML.
-- **Threat Intelligence:** catálogo local de IP, dominios, correos y SHA-256; importación CSV/XLSX; análisis de archivos y extracción de candidatos IOC desde formatos de texto compatibles.
+- **Threat Intelligence:** catálogo local de IP, dominios, correos y SHA-256; importación CSV/XLSX; análisis estático de archivos; extracción local de texto desde TXT/LOG/CSV/JSON/XML/YAML, XLSX/XLSM, DOCX/DOCM y PPTX/PPTM; candidatos IOC sujetos a aprobación manual; enriquecimiento externo opcional de un indicador por consulta mediante VirusTotal (SHA-256), AbuseIPDB (IP pública) y AlienVault OTX (IP/dominio/SHA-256).
 - **Event Correlation:** registro manual de eventos y coincidencia exacta con el catálogo IOC.
 - **Incident Center:** creación manual de casos y estados abierto, reconocido y cerrado.
 - **Historial:** consultas de análisis y métricas almacenadas en SQLite.
@@ -105,7 +108,7 @@ Tipos admitidos: `ip`, `domain`, `email`, `sha256`. Límite de 2 MB y 5000 filas
 
 El análisis acepta archivos no vacíos de hasta 10 MB. Calcula hashes e identifica tipo y estructura; no ejecuta archivos ni los envía a terceros.
 
-La extracción de candidatos IOC se limita a archivos de texto UTF-8 con extensiones compatibles: `.txt`, `.log`, `.csv`, `.json`, `.xml`, `.yaml`, `.yml`, `.eml`, `.conf`, `.ini`, `.cfg`, `.out`. Se limita a 500 candidatos. No se importan automáticamente: cada candidato requiere revisión y aprobación manual.
+La extracción de texto local admite archivos UTF-8 `.txt`, `.log`, `.csv`, `.json`, `.xml`, `.yaml`, `.yml`, `.eml`, `.conf`, `.ini`, `.cfg`, `.out`, además de Office Open XML `.xlsx`, `.xlsm`, `.docx`, `.docm`, `.pptx` y `.pptm`. La extracción Office se limita a 2 MB comprimidos, 2000 entradas ZIP, 40 MB expandidos y 8 MB por entrada. Se extraen como máximo 200.000 caracteres y 500 candidatos IOC. No se ejecutan macros ni fórmulas, ni se importan candidatos automáticamente: cada uno requiere revisión y aprobación manual.
 
 Office Open XML se inspecciona estáticamente con límites de recursos: hasta 2000 entradas ZIP, 40 MB expandidos, 8 MB por entrada y ratio máximo de compresión 200:1 para entradas mayores de 1 MB. La presencia de macros, fórmulas o enlaces externos no demuestra que un documento sea malicioso.
 
@@ -117,6 +120,7 @@ YARA es opcional y necesita instalar el extra `kyros[yara]` y configurar `KYROS_
 - Las solicitudes de escritura requieren además la cabecera `X-Kyros-Request: 1`.
 - Se aplican cabeceras de seguridad, incluida CSP y protección contra framing.
 - Las consultas IP y DNS requieren consentimiento explícito. Solo se envía el indicador necesario al servicio correspondiente.
+- El enriquecimiento de Threat Intelligence requiere una acción manual y consentimiento por consulta. VirusTotal recibe únicamente el SHA-256; AbuseIPDB, una IP pública; OTX, el indicador seleccionado. Nunca se suben muestras ni texto del archivo a estos proveedores.
 - No se transmiten archivos, historial, credenciales ni eventos a proveedores externos.
 - El copiloto IA solo recibe el texto enviado manualmente tras marcar la casilla de consentimiento. No pegues secretos, tokens ni datos personales.
 - El historial de archivos conserva hashes y metadatos, no los bytes ni el nombre original.
