@@ -19,3 +19,9 @@ services:
         sync: false
       - key: KYROS_AUTH_PASSWORD
         sync: false
+      - key: KYROS_AI_BASE_URL
+        sync: false
+      - key: KYROS_AI_MODEL
+        sync: false
+      - key: KYROS_AI_API_KEY
+        sync: false
