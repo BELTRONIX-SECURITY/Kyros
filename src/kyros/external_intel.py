@@ -184,3 +184,59 @@ async def lookup_indicator(provider: str, indicator_type: str, indicator: str) -
                 "reputation": attrs.get("reputation"),
                 "validation": attrs.get("validation", []),
                 "meaning": "La presencia en pulses requiere revisar contexto, fechas y fuentes."}
+
+async def lookup_available_sources(indicator_type: str, indicator: str) -> dict:
+    """Query only configured providers applicable to this IOC type; never upload samples."""
+    available = provider_status()
+    selected = []
+    if indicator_type == "sha256":
+        selected = ["virustotal", "otx"]
+    elif indicator_type == "ip":
+        selected = ["abuseipdb", "otx"]
+    elif indicator_type == "domain":
+        selected = ["otx"]
+    results, errors = [], []
+    for provider in selected:
+        if not available.get(provider):
+            continue
+        try:
+            data = await lookup_indicator(provider, indicator_type, indicator)
+            results.append({"provider": provider, "data": data,
+                            "assessment": build_assessment(data, indicator_type)})
+        except httpx.HTTPStatusError as exc:
+            errors.append({"provider": provider, "error": f"HTTP {exc.response.status_code}"})
+        except (httpx.HTTPError, RuntimeError, ValueError):
+            errors.append({"provider": provider, "error": "Consulta no disponible o rechazada"})
+    if not results and not errors:
+        raise RuntimeError("No hay proveedores aplicables configurados para este tipo de indicador.")
+    malicious = sum(int(x["data"].get("last_analysis_stats", {}).get("malicious", 0) or 0)
+                    for x in results if x["provider"] == "virustotal")
+    suspicious = sum(int(x["data"].get("last_analysis_stats", {}).get("suspicious", 0) or 0)
+                     for x in results if x["provider"] == "virustotal")
+    return {
+        "analysis_level": "L2_multi_source_indicator_triage",
+        "indicator_type": indicator_type,
+        "indicator": indicator,
+        "sources_queried": [x["provider"] for x in results],
+        "sources_not_available": [p for p in selected if not available.get(p)],
+        "source_errors": errors,
+        "source_results": results,
+        "risk": "high" if malicious >= 5 else "medium" if malicious or suspicious else "unknown",
+        "conclusion": (
+            "Se observaron detecciones maliciosas en VirusTotal; validar con telemetría y análisis local."
+            if malicious else
+            "No se obtuvieron detecciones maliciosas en las fuentes consultadas. Resultado no concluyente; ausencia de detección no demuestra seguridad."
+        ),
+        "limitations": [
+            "Solo se consultaron fuentes configuradas y aplicables al tipo de indicador.",
+            "Se compartió únicamente el indicador autorizado; nunca el archivo ni su contenido.",
+            "Las fuentes de reputación no confirman por sí solas actividad en el entorno.",
+            "No se consultaron automáticamente relaciones ni sandbox; requieren módulos y permisos específicos."
+        ],
+        "recommendations": [
+            "Correlacionar el indicador con eventos del SIEM/EDR, usuario, host y marca temporal.",
+            "Validar resultados discrepantes y antigüedad de cada fuente.",
+            "Completar análisis local del archivo con antivirus/YARA y revisión estática."
+        ]
+    }
+
