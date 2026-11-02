@@ -17,6 +17,71 @@ def provider_status() -> dict:
     }
 
 
+def build_assessment(result: dict, indicator_type: str) -> dict:
+    """Create a conservative, evidence-led conclusion from one provider response."""
+    provider = result.get("provider", "unknown")
+    findings = []
+    recommendations = []
+    risk = "unknown"
+    stats = result.get("last_analysis_stats", {})
+    malicious = int(stats.get("malicious", 0) or 0)
+    suspicious = int(stats.get("suspicious", 0) or 0)
+    if provider == "virustotal":
+        if malicious > 0:
+            risk = "high" if malicious >= 5 else "medium"
+            findings.append(f"{malicious} motor(es) clasificaron el hash como malicioso.")
+            recommendations.append("Mantener el archivo aislado y escalar para análisis local y contextual.")
+        elif suspicious > 0:
+            risk = "medium"
+            findings.append(f"{suspicious} motor(es) lo clasificaron como sospechoso; no equivale a malware confirmado.")
+            recommendations.append("Revisar las detecciones individuales, antigüedad y reputación de los motores.")
+        else:
+            risk = "unknown"
+            findings.append("La consulta no muestra detecciones maliciosas ni sospechosas.")
+            recommendations.append("No declarar el archivo seguro; completar inspección local y revisar contexto de origen.")
+        detected = (result.get("detected_type") or "").lower()
+        names = result.get("names", [])
+        extensions = {str(name).rsplit(".", 1)[-1].lower() for name in names if "." in str(name)}
+        expected = {"xlsx": "xlsx", "xlsm": "xlsm", "docx": "docx", "docm": "docm",
+                    "pptx": "pptx", "pptm": "pptm", "exe": "pe"}
+        if detected and extensions:
+            mismatches = [ext for ext in extensions if expected.get(ext, ext) not in detected]
+            if mismatches:
+                findings.append("Se encontraron nombres alternativos cuya extensión no coincide con el tipo detectado: " + ", ".join(sorted(mismatches)[:8]) + ".")
+                recommendations.append("Verificar extensión, nombre de origen y tipo real; los nombres alternativos no prueban por sí solos suplantación.")
+        conclusion = ("VirusTotal reporta detecciones; requiere investigación y contención según el contexto."
+                      if malicious else
+                      "No se observaron detecciones en los motores consultados. El veredicto permanece no concluyente: ausencia de detección no demuestra seguridad.")
+    elif provider == "abuseipdb":
+        score = int(result.get("abuse_confidence_score") or 0)
+        reports = int(result.get("total_reports") or 0)
+        risk = "high" if score >= 80 else "medium" if score >= 30 else "unknown"
+        findings.append(f"AbuseIPDB informa una confianza de abuso de {score}/100 y {reports} reportes.")
+        recommendations.append("Correlacionar los reportes con telemetría, fecha, ASN y función legítima de la IP antes de bloquear.")
+        conclusion = "La reputación comunitaria es orientativa y no confirma actividad maliciosa en el entorno."
+    elif provider == "otx":
+        count = int(result.get("pulse_count") or 0)
+        risk = "medium" if count else "unknown"
+        findings.append(f"OTX devuelve {count} pulse(s) asociados al indicador.")
+        recommendations.append("Revisar pulses, fechas, fuentes y contexto antes de elevar la severidad.")
+        conclusion = "La presencia o ausencia en OTX no constituye por sí sola una confirmación de amenaza."
+    else:
+        conclusion = "No hay información suficiente para emitir una conclusión."
+    return {
+        "risk": risk,
+        "verdict": "detections_reported" if provider == "virustotal" and malicious else
+                   "no_detections_not_conclusive" if provider == "virustotal" else "reputation_context_only",
+        "findings": findings,
+        "recommendations": recommendations,
+        "conclusion": conclusion,
+        "limitations": [
+            "La consulta cubre únicamente el indicador autorizado; no se envió el archivo.",
+            "La reputación externa puede estar incompleta o desactualizada.",
+            "La conclusión debe correlacionarse con telemetría y contexto del entorno."
+        ],
+    }
+
+
 async def lookup_indicator(provider: str, indicator_type: str, indicator: str) -> dict:
     """Query one indicator only. Never upload a file or send surrounding context."""
     keys = {
@@ -44,10 +109,19 @@ async def lookup_indicator(provider: str, indicator_type: str, indicator: str) -
             response.raise_for_status()
             attrs = response.json().get("data", {}).get("attributes", {})
             stats = attrs.get("last_analysis_stats", {})
-            return {"provider": provider, "indicator": indicator.lower(),
-                    "reputation": attrs.get("reputation"),
-                    "last_analysis_stats": {k: stats.get(k, 0) for k in ("malicious", "suspicious", "harmless", "undetected", "timeout")},
-                    "meaning": "Resultados agregados de análisis; no constituyen por sí solos confirmación de malware."}
+            return {
+                "provider": provider, "indicator": indicator.lower(),
+                "reputation": attrs.get("reputation"),
+                "last_analysis_stats": {k: stats.get(k, 0) for k in ("malicious", "suspicious", "harmless", "undetected", "timeout")},
+                "detected_type": attrs.get("type_description") or attrs.get("type_tag") or "",
+                "magic": attrs.get("magic", ""),
+                "size": attrs.get("size"),
+                "names": [str(x)[:180] for x in (attrs.get("names") or [])[:20]],
+                "meaningful_name": attrs.get("meaningful_name", ""),
+                "first_submission_date": attrs.get("first_submission_date"),
+                "last_analysis_date": attrs.get("last_analysis_date"),
+                "meaning": "Resultados agregados de análisis; no constituyen por sí solos confirmación de malware.",
+            }
         if provider == "abuseipdb":
             response = await client.get(
                 "https://api.abuseipdb.com/api/v2/check",
