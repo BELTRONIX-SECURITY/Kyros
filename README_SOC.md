@@ -82,6 +82,17 @@ Documentación de proveedores:
 - ipapi.co: https://ipapi.co/api/
 - FreeIPAPI: https://app.freeipapi.com/docs/api-reference/get-ip-info
 
+## Copiloto IA SOC (opcional)
+
+Kyros incorpora un copiloto basado en una API compatible con OpenAI Chat Completions. No se activa por defecto. Requiere configurar:
+- `KYROS_AI_BASE_URL`: URL base HTTPS del proveedor (por ejemplo, endpoint compatible de un proveedor cloud) o URL local de Ollama, como `http://127.0.0.1:11434/v1`.
+- `KYROS_AI_MODEL`: identificador del modelo.
+- `KYROS_AI_API_KEY`: clave opcional, almacenada como secreto del servidor. Para Ollama local normalmente puede quedar vacía.
+
+El panel Copiloto IA permite pegar texto manualmente y exige una casilla de consentimiento antes de transmitirlo. Solo se envía ese contexto (máximo 8000 caracteres); nunca se adjuntan automáticamente archivos, historial, credenciales ni eventos. La conexión remota exige HTTPS. Las respuestas son apoyo para el analista, no veredictos ni acciones automáticas. El texto de entrada debe tratarse como evidencia no confiable y no debe contener secretos, tokens ni datos personales.
+
+Para un despliegue en Render, configura las tres variables como secretos/variables del servicio. Un modelo Ollama que se ejecute en un equipo local no será accesible desde Render mediante `127.0.0.1`; en ese caso se necesita un endpoint privado o seguro alcanzable desde Render. No publiques el endpoint ni expongas Ollama directamente a Internet.
+
 ## Límites y medidas adicionales antes de usar con datos reales
 
 HTTP Basic protege el acceso solo cuando se utiliza sobre HTTPS. Para una plataforma expuesta a Internet con varios usuarios, añade un proveedor de identidad/SSO, limitación de intentos en el perímetro, gestión de usuarios y auditoría. No reutilices contraseñas personales. La autenticación HTTP Basic del prototipo no ofrece cuentas individuales, MFA ni cierre de sesión centralizado.
