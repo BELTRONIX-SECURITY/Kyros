@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import json
 import os
 import secrets
 from pathlib import Path
@@ -34,30 +35,58 @@ STATIC_DIR = Path(__file__).parent / "static"
 security = HTTPBasic(auto_error=False)
 
 
-def require_auth(
-    request: Request, credentials: HTTPBasicCredentials | None = Depends(security)
-) -> str:
-    """Require configured HTTP Basic credentials and reject cross-origin form posts."""
+def require_auth(request: Request) -> str:
+    """Authenticate an independent HTTP Basic account and reject cross-origin form posts."""
     if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.headers.get("x-kyros-request") != "1":
         raise HTTPException(status_code=403, detail="Solicitud de origen no validada.")
-    expected_user = os.getenv("KYROS_AUTH_USERNAME", "")
-    expected_password = os.getenv("KYROS_AUTH_PASSWORD", "")
-    if not expected_user or len(expected_password) < 16:
-        raise HTTPException(status_code=503, detail="La autenticación no está configurada correctamente.")
-    if credentials is None:
+
+    # Preferred format: JSON object mapping each username to an individual password.
+    # Configure it as a Render secret; never commit credentials to the repository.
+    users_config = os.getenv("KYROS_AUTH_USERS", "").strip()
+    if users_config:
+        try:
+            users = json.loads(users_config)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=503, detail="La configuración de usuarios no es válida.")
+        if (not isinstance(users, dict) or not users
+                or any(not isinstance(user, str) or not user.strip()
+                       or not isinstance(password, str) or len(password) < 16
+                       for user, password in users.items())):
+            raise HTTPException(status_code=503, detail="Configura usuarios y contraseñas de al menos 16 caracteres.")
+    else:
+        # Backward compatibility with the original single-account configuration.
+        expected_user = os.getenv("KYROS_AUTH_USERNAME", "")
+        expected_password = os.getenv("KYROS_AUTH_PASSWORD", "")
+        users = {expected_user: expected_password} if expected_user and len(expected_password) >= 16 else {}
+
+    credentials = request.headers.get("authorization", "")
+    if not credentials.startswith("Basic "):
         raise HTTPException(
             status_code=401, detail="Autenticación requerida.",
             headers={"WWW-Authenticate": 'Basic realm="Kyros SOC", charset="UTF-8"'},
         )
-    user_ok = secrets.compare_digest(credentials.username, expected_user)
-    password_ok = secrets.compare_digest(credentials.password, expected_password)
-    if not (user_ok and password_ok):
+    import base64
+    try:
+        decoded = base64.b64decode(credentials[6:], validate=True).decode("utf-8")
+        username, password = decoded.split(":", 1)
+    except (ValueError, UnicodeDecodeError):
         raise HTTPException(
             status_code=401, detail="Credenciales incorrectas.",
             headers={"WWW-Authenticate": 'Basic realm="Kyros SOC", charset="UTF-8"'},
         )
-    return credentials.username
-
+    if not users:
+        raise HTTPException(status_code=503, detail="La autenticación no está configurada correctamente.")
+    valid = any(
+        secrets.compare_digest(username, configured_user)
+        and secrets.compare_digest(password, configured_password)
+        for configured_user, configured_password in users.items()
+    )
+    if not valid:
+        raise HTTPException(
+            status_code=401, detail="Credenciales incorrectas.",
+            headers={"WWW-Authenticate": 'Basic realm="Kyros SOC", charset="UTF-8"'},
+        )
+    return username
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
