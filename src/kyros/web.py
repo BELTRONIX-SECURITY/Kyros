@@ -18,7 +18,9 @@ from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context\n\nfrom kyros.database import (
+from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context
+
+from kyros.database import (
     add_security_event, add_threat_indicator, correlate_security_events, create_incident,
     dashboard_summary, list_analyses, list_incidents, list_security_events, list_threat_indicators,
     save_analysis, update_incident_status,
@@ -148,7 +150,12 @@ app = FastAPI(
 app.add_middleware(SecurityHeadersMiddleware)
 
 
-class AIAnalysisRequest(BaseModel):\n    context: str = Field(min_length=1, max_length=MAX_AI_CONTEXT)\n    external_consent: bool = False\n\n\nclass IndicatorRequest(BaseModel):
+class AIAnalysisRequest(BaseModel):
+    context: str = Field(min_length=1, max_length=MAX_AI_CONTEXT)
+    external_consent: bool = False
+
+
+class IndicatorRequest(BaseModel):
     indicator: str = Field(min_length=1, max_length=253)
     external_lookup: bool = False
 
