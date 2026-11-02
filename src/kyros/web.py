@@ -19,7 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context
-from kyros.external_intel import build_assessment, lookup_indicator, provider_status
+from kyros.external_intel import build_assessment, lookup_available_sources, lookup_indicator, provider_status
 
 from kyros.database import (
     add_security_event, add_threat_indicator, correlate_security_events, create_incident,
@@ -162,7 +162,7 @@ class IndicatorRequest(BaseModel):
 
 
 class ExternalIntelRequest(BaseModel):
-    provider: Literal["virustotal", "abuseipdb", "otx"]
+    provider: Literal["auto", "virustotal", "abuseipdb", "otx"]
     indicator_type: Literal["ip", "domain", "sha256"]
     indicator: str = Field(min_length=3, max_length=253)
     external_consent: bool = False
@@ -248,6 +248,12 @@ async def enrich_threat_indicator(request: ExternalIntelRequest):
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
+        if request.provider == "auto":
+            result = await lookup_available_sources(request.indicator_type, indicator)
+            return {"result": result, "assessment": result, "external_submission": True,
+                    "submitted": {"type": request.indicator_type, "indicator": indicator},
+                    "file_uploaded": False,
+                    "note": "Se consultaron únicamente proveedores configurados y aplicables. Solo se transmitió el indicador autorizado."}
         result = await lookup_indicator(request.provider, request.indicator_type, indicator)
         assessment = build_assessment(result, request.indicator_type)
         return {"result": result, "assessment": assessment, "external_submission": True,
