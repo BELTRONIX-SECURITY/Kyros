@@ -61,9 +61,18 @@ def _ooxml_analysis(data: bytes, filename: str | None = None) -> dict[str, Any] 
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             entries = archive.infolist()
-            if len(entries) > 2000 or sum(item.file_size for item in entries) > 40 * 1024 * 1024:
+            expanded_size = sum(item.file_size for item in entries)
+            oversized_parts = any(item.file_size > 8 * 1024 * 1024 for item in entries)
+            suspicious_ratio = any(
+                item.file_size > 1024 * 1024 and
+                item.compress_size > 0 and item.file_size / item.compress_size > 200
+                for item in entries
+            )
+            if (len(entries) > 2000 or expanded_size > 40 * 1024 * 1024
+                    or oversized_parts or suspicious_ratio):
                 return {"file_type": "ZIP archive (contenido no inspeccionado: límites excedidos)",
-                        "structure": {"valid_ooxml": False, "inspection": "resource_limit"}}
+                        "structure": {"valid_ooxml": False, "inspection": "resource_limit",
+                                      "entry_count": len(entries), "expanded_size_bytes": expanded_size, "expanded_size_bytes": expanded_size}}
             names = {item.filename for item in entries}
             if "[Content_Types].xml" not in names:
                 return None
@@ -81,16 +90,24 @@ def _ooxml_analysis(data: bytes, filename: str | None = None) -> dict[str, Any] 
             extlinks = [name for name in names if name.startswith(("xl/externalLinks/", "word/externalLinks/", "ppt/externalLinks/"))]
             formulas = 0
             sheet_count = 0
+            skipped_worksheet_parts = 0
             try:
-                root = ET.fromstring(archive.read(main_part)[:2 * 1024 * 1024])
+                with archive.open(main_part) as part:
+                    root = ET.fromstring(part.read(2 * 1024 * 1024 + 1))
                 if family == "Microsoft Excel":
-                    sheet_count = sum(1 for node in root.iter() if node.tag.endswith("}sheet"))
+                    sheet_count = sum(1 for node in root.iter() if node.tag.rsplit("}", 1)[-1] == "sheet")
                     for name in names:
                         if name.startswith("xl/worksheets/") and name.endswith(".xml"):
                             info = archive.getinfo(name)
                             if info.file_size <= 4 * 1024 * 1024:
-                                xml_data = archive.read(name)
-                                formulas += xml_data.count(b"<f") + xml_data.count(b":f")
+                                with archive.open(name) as part:
+                                    sheet_root = ET.fromstring(part.read(4 * 1024 * 1024 + 1))
+                                formulas += sum(
+                                    1 for node in sheet_root.iter()
+                                    if node.tag.rsplit("}", 1)[-1] == "f"
+                                )
+                            else:
+                                skipped_worksheet_parts += 1
             except (ET.ParseError, KeyError, OSError, zipfile.BadZipFile):
                 return {"file_type": "Office Open XML (estructura no válida)",
                         "structure": {"valid_ooxml": False, "inspection": "invalid_xml"}}
@@ -105,7 +122,8 @@ def _ooxml_analysis(data: bytes, filename: str | None = None) -> dict[str, Any] 
                     "entry_count": len(entries),
                     "sheet_count": sheet_count if family == "Microsoft Excel" else None,
                     "formulas_present": formulas > 0,
-                    "formula_count_approx": formulas if family == "Microsoft Excel" else None,
+                    "formula_count": formulas if family == "Microsoft Excel" else None,
+                    "worksheet_parts_skipped": skipped_worksheet_parts,
                     "macro_project_present": has_macros, "external_link_parts": len(extlinks),
                     "expected_extension": "." + extension.lower(),
                     "extension_matches_structure": not filename or PurePath(filename).suffix.lower() == "." + extension.lower(),
