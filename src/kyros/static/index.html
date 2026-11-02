@@ -237,42 +237,60 @@ function setOutput(id,value){
  Object.entries(value).filter(([k])=>!["analysis_type","assessment"].includes(k)).forEach(([k,v])=>renderResultValue(detailSection,k,v));
  el.append(detailSection);
  const summary=document.createElement("div");summary.className="result-section";
- const summaryTitle=document.createElement("h4");summaryTitle.textContent="Conclusión del análisis";summary.append(summaryTitle);
- const narrative=document.createElement("p");narrative.style.whiteSpace="pre-wrap";narrative.style.margin="8px 0";
  const assessment=value.assessment;
- const assessmentObject=assessment&&typeof assessment==="object"?assessment:null;
- const conclusion=assessmentObject&&(assessmentObject.conclusion||assessmentObject.verdict||assessmentObject.summary||assessmentObject.executive_summary);
- const risk=String(value.risk||((assessmentObject&&assessmentObject.risk)||"unknown")).toLowerCase();
- const yaraMatches=value.yara&&Array.isArray(value.yara.matches)?value.yara.matches.length:0;
- if(conclusion){
-  narrative.textContent=String(conclusion);
- } else if(typeof assessment==="string"&&assessment.trim()){
-  narrative.textContent=assessment.trim();
- } else if(value.file_type){
-  if(yaraMatches>0){
-   narrative.textContent="ALERTA DE SEGURIDAD: el análisis estático ha identificado "+yaraMatches+" coincidencia(s) de YARA en el archivo. Este resultado requiere validación manual y análisis contextual; no constituye por sí solo confirmación de malware. El archivo no se ejecutó ni se envió a terceros.";
-  } else {
-   narrative.textContent="RESULTADO DEL ANÁLISIS: no se han observado indicios de amenaza en las comprobaciones estáticas realizadas. Sin embargo, el riesgo permanece sin determinar porque no se ha ejecutado el archivo ni se dispone necesariamente de firmas antivirus o reglas YARA configuradas. No debe interpretarse como garantía de que el archivo sea seguro.";
-  }
- } else if(value.indicator){
-  const kind=String(value.type||value.analysis_type||"indicador");
-  if(risk==="high"||risk==="critical"||risk==="malicious"){
-   narrative.textContent="ALERTA DE SEGURIDAD: el indicador presenta una clasificación de riesgo "+risk+". Se recomienda validar la fuente, revisar la actividad asociada y correlacionar con otras evidencias antes de confirmar un incidente.";
-  } else if(risk==="low"||risk==="clean"){
-   narrative.textContent="RESULTADO DEL ANÁLISIS: las comprobaciones disponibles no muestran indicios relevantes de amenaza para este "+kind+". Esta conclusión se limita a las fuentes y verificaciones realizadas; conviene correlacionar con registros y contexto del entorno.";
-  } else {
-   narrative.textContent="RESULTADO DEL ANÁLISIS: no se han identificado indicios de amenaza con las comprobaciones básicas realizadas al indicador "+String(value.indicator)+". Su reputación y actividad maliciosa no están confirmadas, por lo que el riesgo permanece SIN DETERMINAR. Para una conclusión más sólida, realiza enriquecimiento de inteligencia autorizado y correlaciona con eventos del entorno.";
-  }
- } else {
-  narrative.textContent="RESULTADO DEL ANÁLISIS: no se han encontrado evidencias suficientes para confirmar una amenaza. Mantén la clasificación como no determinada hasta validar los datos, el contexto y las fuentes disponibles.";
- }
- summary.append(narrative);
- if(assessmentObject){
-  const summaryFields=["analysis_level","risk","severity","confidence","case_status","verdict","facts","recommendations","missing_evidence"];
-  const summaryData={};summaryFields.forEach(k=>{if(assessmentObject[k]!==undefined)summaryData[k]=assessmentObject[k]});
-  if(Object.keys(summaryData).length)renderResultValue(summary,"Detalle de evaluación",summaryData);
- }
- const note=document.createElement("div");note.className="note";note.textContent="Conclusión orientativa basada únicamente en las comprobaciones mostradas. La ausencia de hallazgos no demuestra por sí sola que un indicador o archivo sea seguro.";summary.append(note);
+ const a=assessment&&typeof assessment==="object"?assessment:null;
+ const risk=String((a&&a.risk)||value.risk||"unknown").toLowerCase();
+ const addReportSection=(heading,content)=>{
+  if(content===undefined||content===null||content==="")return;
+  const section=document.createElement("div");section.className="result-section";
+  const h=document.createElement("h4");h.textContent=heading;section.append(h);
+  const values=Array.isArray(content)?content:[content];
+  const list=document.createElement("ul");list.className="result-list";
+  values.forEach(item=>{
+   if(item===undefined||item===null||item==="")return;
+   const li=document.createElement("li");
+   li.textContent=typeof item==="object"?JSON.stringify(item,null,2):String(item);
+   list.append(li);
+  });
+  if(list.childNodes.length)section.append(list);
+  summary.append(section);
+ };
+ const heading=document.createElement("h4");heading.textContent="INFORME DE ANÁLISIS · SOC L2";summary.append(heading);
+ const executive=document.createElement("p");executive.style.whiteSpace="pre-wrap";executive.style.margin="8px 0";
+ const conclusion=a&&(a.conclusion||a.executive_summary||a.summary);
+ if(conclusion)executive.textContent=String(conclusion);
+ else if(typeof assessment==="string"&&assessment.trim())executive.textContent=assessment.trim();
+ else if(value.file_type)executive.textContent="Triaje estático del archivo completado. La ausencia de detecciones no demuestra que el archivo sea seguro; la conclusión queda limitada a las comprobaciones ejecutadas.";
+ else if(value.indicator)executive.textContent="Se ha realizado una comprobación del indicador "+String(value.indicator)+". El resultado debe interpretarse según las fuentes consultadas y correlacionarse con la telemetría del entorno.";
+ else executive.textContent="No hay evidencias suficientes para confirmar una amenaza. Mantener el resultado como no concluyente hasta validar el contexto y las fuentes disponibles.";
+ summary.append(executive);
+ addReportSection("1. Alcance del análisis",(a&&a.scope)||((value.file_type)?"Análisis estático del archivo. No se ejecutó el contenido ni se realizó envío automático a terceros.":(value.indicator)?"Triaje de un indicador individual; no equivale a una investigación completa del endpoint o incidente.":"Comprobaciones disponibles en el resultado mostrado."));
+ addReportSection("2. Hallazgos y evidencias",(a&&(a.facts||a.findings))||value.findings||value.matches);
+ addReportSection("3. Evaluación del riesgo",[
+  "Riesgo: "+risk,
+  "Severidad: "+String((a&&a.severity)||value.severity||"No determinada"),
+  "Confianza: "+String((a&&a.confidence)||"No determinada"),
+  "Estado: "+String((a&&a.case_status)||"Requiere validación"),
+  "Veredicto: "+String((a&&a.verdict)||"No concluyente")
+ ]);
+ const mitre=a&&a.mitre_attack;
+ if(mitre)addReportSection("4. MITRE ATT&CK",mitre.note||mitre.mapping||mitre);
+ else addReportSection("4. MITRE ATT&CK","No se asignan tácticas ni técnicas: la evidencia disponible no justifica una correspondencia fiable.");
+ addReportSection("5. Hipótesis y posibles falsos positivos",a&&a.hypotheses);
+ addReportSection("6. Recomendaciones priorizadas",(a&&(a.priority_actions||a.recommendations))||[
+  "P1 · Validar el indicador o archivo con la telemetría del activo afectado.",
+  "P2 · Correlacionar fecha, usuario, proceso, origen y eventos relacionados en SIEM/EDR.",
+  "P3 · Documentar fuentes, resultados y limitaciones antes de cerrar el análisis."
+ ]);
+ addReportSection("7. Evidencia pendiente",(a&&a.missing_evidence)||[
+  "Registros del endpoint y procesos asociados.",
+  "Contexto de usuario, activo, fecha, origen y actividad relacionada.",
+  "Correlación con SIEM, EDR, firewall o proxy, cuando estén disponibles."
+ ]);
+ addReportSection("8. Limitaciones del análisis",a&&a.limitations);
+ const finalConclusion=document.createElement("div");finalConclusion.className="note";
+ finalConclusion.textContent="Conclusión SOC L2: "+String(conclusion||"No concluyente. No se dispone de evidencia suficiente para confirmar o descartar actividad maliciosa.")+" La reputación o ausencia de detecciones, por sí sola, no confirma ni descarta un incidente. Correlacionar con telemetría y contexto antes de tomar decisiones de contención o cierre.";
+ summary.append(finalConclusion);
  el.append(summary);
  const raw=document.createElement("details");raw.className="result-raw";
  const rawTitle=document.createElement("summary");rawTitle.textContent="Ver respuesta técnica completa (JSON)";raw.append(rawTitle);
