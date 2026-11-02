@@ -1,6 +1,44 @@
-# Kyros SOC 0.6.0 — dashboard y centro de incidentes
+# Kyros SOC 0.6.0 — documentación técnica
 
-Esta rama incorpora un dashboard SOC, API defensiva, métricas reales, historial y un centro de gestión manual de incidentes, manteniendo la CLI OSINT original.
+Kyros SOC es una interfaz web y API FastAPI para triaje defensivo local. Mantiene la CLI OSINT original. Esta versión es un MVP para pruebas controladas, no un SIEM empresarial ni un sistema de detección automática.
+
+## Despliegue actual en Render
+
+El servicio existente `kyros-soc` está conectado al repositorio `troytechnology/Kyros`, rama `main`, con despliegue automático por commit.
+
+- URL: https://kyros-soc.onrender.com
+- Health check público: https://kyros-soc.onrender.com/api/health
+- Panel de Render: https://dashboard.render.com/web/srv-dbjnksm7bikc7381f1mg
+- Plan: Free, región Frankfurt.
+- Comando de compilación: `pip install .`
+- Comando de inicio: `uvicorn kyros.web:app --host 0.0.0.0 --port $PORT`
+- Ruta de comprobación: `/api/health`
+
+No es necesario crear otro Blueprint ni seleccionar una rama alternativa para continuar las pruebas de este servicio. Los commits en `main` activan el despliegue.
+
+### Variables de entorno
+
+Configura desde el panel de Render, sin publicar sus valores:
+
+| Variable | Uso |
+|---|---|
+| `KYROS_ENV` | `production` |
+| `KYROS_DB_PATH` | `/tmp/kyros_soc.sqlite3` |
+| `KYROS_AUTH_USERNAME` | Usuario HTTP Basic |
+| `KYROS_AUTH_PASSWORD` | Contraseña exclusiva de al menos 16 caracteres |
+| `KYROS_AI_BASE_URL` | Opcional; endpoint compatible con OpenAI |
+| `KYROS_AI_MODEL` | Opcional; modelo del proveedor |
+| `KYROS_AI_API_KEY` | Opcional; secreto del proveedor |
+
+La autenticación no se considera configurada si falta el usuario o la contraseña no alcanza la longitud mínima; la aplicación responde con error 503 en rutas protegidas. No compartas las credenciales en chats, capturas ni archivos del repositorio.
+
+### Límites de Render Free
+
+- El servicio puede suspenderse tras periodos de inactividad.
+- El sistema de archivos es efímero. SQLite en `/tmp/kyros_soc.sqlite3` puede perderse al reiniciar, suspender o desplegar.
+- No hay disco persistente ni copias de seguridad automáticas configuradas.
+- Este entorno es exclusivamente para pruebas con datos ficticios. No almacenes muestras confidenciales, información personal ni datos SOC reales.
+- No cambies el plan ni añadas recursos de pago para estas pruebas.
 
 ## Ejecución local
 
@@ -10,91 +48,111 @@ Requisitos: Python 3.10 o superior.
 python -m venv .venv
 # Linux/macOS
 source .venv/bin/activate
-# Windows PowerShell: .venv\\Scripts\\Activate.ps1
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
-Configura credenciales antes de iniciar la aplicación. La contraseña debe tener al menos 16 caracteres.
+Configura credenciales de desarrollo:
 
 Linux/macOS:
 ```bash
-export KYROS_AUTH_USERNAME="admin"
-export KYROS_AUTH_PASSWORD="cambia-esta-por-una-clave-larga"
+export KYROS_AUTH_USERNAME="soc-admin"
+export KYROS_AUTH_PASSWORD="cambia-por-una-clave-de-prueba-de-16-caracteres"
 kyros-web
 ```
 
 Windows PowerShell:
 ```powershell
-$env:KYROS_AUTH_USERNAME = "admin"
-$env:KYROS_AUTH_PASSWORD = "cambia-esta-por-una-clave-larga"
+$env:KYROS_AUTH_USERNAME = "soc-admin"
+$env:KYROS_AUTH_PASSWORD = "cambia-por-una-clave-de-prueba-de-16-caracteres"
 kyros-web
 ```
 
-Abre http://127.0.0.1:8000. El navegador solicitará autenticación HTTP Basic. En desarrollo, la documentación está en /docs.
+Abre http://127.0.0.1:8000. En desarrollo, la API interactiva está en `/docs`. En producción, Swagger, ReDoc y OpenAPI están deshabilitados.
 
-## Despliegue de prueba gratuito en Render
+## Módulos implementados
 
-Esta rama está preparada para una **prueba con el plan Free** de Render. No incluye disco persistente ni servicios de pago.
+- **Dashboard:** totales del historial, actividad de las últimas 24 horas y distribución de incidentes registrados.
+- **IP Intelligence:** clasificación local IPv4/IPv6. Enriquecimiento geográfico/ASN opcional para IP públicas mediante ipapi.co y FreeIPAPI.
+- **Domain Intelligence:** validación local y consultas DNS opcionales A, AAAA, MX, TXT y DMARC.
+- **Email Intelligence:** validación de sintaxis y normalización local; no verifica existencia del buzón ni reputación.
+- **File Intelligence:** límite de 10 MB; hashes SHA-256, SHA-1 y MD5; identificación estática de formatos y análisis estructural de Office Open XML.
+- **Threat Intelligence:** catálogo local de IP, dominios, correos y SHA-256; importación CSV/XLSX; análisis de archivos y extracción de candidatos IOC desde formatos de texto compatibles.
+- **Event Correlation:** registro manual de eventos y coincidencia exacta con el catálogo IOC.
+- **Incident Center:** creación manual de casos y estados abierto, reconocido y cerrado.
+- **Historial:** consultas de análisis y métricas almacenadas en SQLite.
+- **Copiloto IA:** opcional; solo transmite el texto que el analista pega y autoriza expresamente.
 
-1. En Render, crea un Blueprint y selecciona este repositorio y la rama `security/free-deploy`.
-2. Render leerá `render.yaml`. Configura `KYROS_AUTH_USERNAME` y `KYROS_AUTH_PASSWORD` como variables secretas. La contraseña debe tener al menos 16 caracteres; utiliza una contraseña aleatoria y exclusiva.
-3. Revisa que el servicio figure con plan **Free** y que no se añadan discos ni otros recursos de pago antes de confirmar.
-4. Despliega y prueba la URL HTTPS. El navegador debe solicitar credenciales antes de mostrar el dashboard.
+## Formatos y límites de importación
 
-### Limitaciones del plan gratuito
+### Catálogo IOC
 
-- El servicio puede entrar en suspensión tras un periodo de inactividad y tardar en responder cuando se reactive.
-- El sistema de archivos es efímero: la base SQLite se guarda en `/tmp/kyros_soc.sqlite3` y el historial puede desaparecer al reiniciar, suspender o volver a desplegar el servicio.
-- El plan gratuito tiene límites de uso y recursos definidos por Render, que pueden cambiar.
-- Esta configuración es para demostración y validación inicial, no para producción ni para almacenar información importante.
+Se admiten archivos CSV UTF-8 y Excel XLSX (primera hoja). Columnas obligatorias:
 
-No introduzcas datos de pago para esta configuración. Si Render muestra un coste o exige cambiar a un plan de pago, detente y revisa la pantalla antes de continuar.
+- `indicator_type`
+- `indicator`
 
-## Módulos disponibles en 0.5.0
+Columnas opcionales:
 
-- Resumen general: contadores de análisis, actividad de las últimas 24 horas y distribución por tipo/severidad.
-- IP Intelligence: clasificación local IPv4/IPv6 y enriquecimiento geográfico/ASN opt-in para IP públicas.
-- Domain Intelligence: validación local del formato y consultas DNS A, AAAA, MX, TXT y _dmarc únicamente con consentimiento explícito. No incluye reputación ni DKIM.
-- Email Intelligence: validación local de sintaxis y normalización del dominio, sin consultar ni transmitir la dirección.
-- Threat Intelligence: catálogo IOC local para IP, dominios, correos y hashes SHA-256, con fuente y confianza documentadas; importación local de CSV y Excel .xlsx validada de hasta 5000 filas y 2 MB (primera hoja; .xls no soportado).
-- Event Correlation: registro manual de eventos y coincidencia exacta contra el catálogo IOC local; los resultados son pistas, no incidentes confirmados.
-- File Intelligence: límite de 10 MB; hashes SHA-256/SHA-1/MD5; identificación estructural de Office Open XML (XLSX/XLSM, DOCX/DOCM, PPTX/PPTM); inspección estática de hojas, fórmulas, macros y partes de enlaces externos. Límites internos: 2000 entradas ZIP, 40 MB expandidos, 8 MB por entrada y ratio de compresión máximo 200:1 para entradas mayores de 1 MB. No extrae ni ejecuta archivos. YARA local opcional mediante `KYROS_YARA_RULES` e instalación `pip install -e '.[yara]'`; no incluye reglas propias, ClamAV ni sandbox. Macros, fórmulas y enlaces externos no son veredictos de malware.
-- Incident Center: creación manual de casos, severidad y estados abierto/reconocido/cerrado.
-- Historial: consulta de análisis y métricas sobre SQLite.
-- Estado e integraciones: capacidades disponibles y pendientes.
+- `confidence` (0–100; valor predeterminado 50)
+- `source`
+- `description`
 
-Los incidentes son registros manuales; no se generan detecciones automáticas ni se declara un ataque activo sin telemetría correlacionada.
+Tipos admitidos: `ip`, `domain`, `email`, `sha256`. Límite de 2 MB y 5000 filas. Los valores se validan antes de guardarse localmente. Las filas no válidas se notifican y no detienen el resto de la importación. Los archivos XLS antiguos no están soportados.
 
-## Formato de importación IOC\n\nLa importación acepta `.csv` UTF-8 y `.xlsx` (primera hoja). Columnas obligatorias: `indicator_type` e `indicator`; opcionales: `confidence` (0–100, por defecto 50), `source` y `description`. Tipos admitidos: `ip`, `domain`, `email`, `sha256`. Límite de 2 MB y 5000 filas. Los valores se validan antes de guardarse localmente; las filas no válidas se informan sin detener el resto de la importación. Los archivos `.xls` antiguos no están soportados.\n\n## Seguridad y fuentes externas
+### Análisis de archivos y extracción IOC
 
-- Autenticación HTTP Basic obligatoria en dashboard y endpoints API.
-- La aplicación falla de forma cerrada (503) si las credenciales no están configuradas o la contraseña tiene menos de 16 caracteres.
-- Comparación de credenciales con comparación de tiempo constante.
-- Cabeceras de seguridad y documentación interactiva deshabilitada en producción.
-- Límite de carga de 10 MB; los archivos se procesan en memoria, no se ejecutan ni se envían a terceros.
-- El historial conserva hashes y metadatos, no el contenido del archivo ni su nombre original.
-- Las consultas externas de IP requieren marcar expresamente la casilla de consentimiento. Por defecto siguen desactivadas.
-- Si se autoriza la consulta, solo se envía la IP pública indicada a ipapi.co y FreeIPAPI para obtener datos geográficos y ASN. Las IP privadas y especiales no se envían.
-- Los proveedores externos reciben la IP consultada y pueden procesar solicitudes conforme a sus propias políticas, condiciones y límites. No se envían archivos, credenciales ni datos del historial.
-- Geolocalización y ASN no equivalen a reputación ni demuestran actividad maliciosa. La puntuación de riesgo permanece sin determinar.
+El análisis acepta archivos no vacíos de hasta 10 MB. Calcula hashes e identifica tipo y estructura; no ejecuta archivos ni los envía a terceros.
 
-Documentación de proveedores:
-- ipapi.co: https://ipapi.co/api/
-- FreeIPAPI: https://app.freeipapi.com/docs/api-reference/get-ip-info
+La extracción de candidatos IOC se limita a archivos de texto UTF-8 con extensiones compatibles: `.txt`, `.log`, `.csv`, `.json`, `.xml`, `.yaml`, `.yml`, `.eml`, `.conf`, `.ini`, `.cfg`, `.out`. Se limita a 500 candidatos. No se importan automáticamente: cada candidato requiere revisión y aprobación manual.
 
-## Copiloto IA SOC (opcional)
+Office Open XML se inspecciona estáticamente con límites de recursos: hasta 2000 entradas ZIP, 40 MB expandidos, 8 MB por entrada y ratio máximo de compresión 200:1 para entradas mayores de 1 MB. La presencia de macros, fórmulas o enlaces externos no demuestra que un documento sea malicioso.
 
-Kyros incorpora un copiloto basado en una API compatible con OpenAI Chat Completions. No se activa por defecto. Requiere configurar:
-- `KYROS_AI_BASE_URL`: URL base HTTPS del proveedor (por ejemplo, endpoint compatible de un proveedor cloud) o URL local de Ollama, como `http://127.0.0.1:11434/v1`.
-- `KYROS_AI_MODEL`: identificador del modelo.
-- `KYROS_AI_API_KEY`: clave opcional, almacenada como secreto del servidor. Para Ollama local normalmente puede quedar vacía.
+YARA es opcional y necesita instalar el extra `kyros[yara]` y configurar `KYROS_YARA_RULES` con una ruta local de reglas. El repositorio no incluye un conjunto de reglas. ClamAV y sandbox no están integrados.
 
-El panel Copiloto IA permite pegar texto manualmente y exige una casilla de consentimiento antes de transmitirlo. Solo se envía ese contexto (máximo 8000 caracteres); nunca se adjuntan automáticamente archivos, historial, credenciales ni eventos. La conexión remota exige HTTPS. Las respuestas son apoyo para el analista, no veredictos ni acciones automáticas. El texto de entrada debe tratarse como evidencia no confiable y no debe contener secretos, tokens ni datos personales.
+## Privacidad y seguridad
 
-Para un despliegue en Render, configura las tres variables como secretos/variables del servicio. Un modelo Ollama que se ejecute en un equipo local no será accesible desde Render mediante `127.0.0.1`; en ese caso se necesita un endpoint privado o seguro alcanzable desde Render. No publiques el endpoint ni expongas Ollama directamente a Internet.
+- La API y el dashboard requieren HTTP Basic; `/api/health` es público para la comprobación de Render.
+- Las solicitudes de escritura requieren además la cabecera `X-Kyros-Request: 1`.
+- Se aplican cabeceras de seguridad, incluida CSP y protección contra framing.
+- Las consultas IP y DNS requieren consentimiento explícito. Solo se envía el indicador necesario al servicio correspondiente.
+- No se transmiten archivos, historial, credenciales ni eventos a proveedores externos.
+- El copiloto IA solo recibe el texto enviado manualmente tras marcar la casilla de consentimiento. No pegues secretos, tokens ni datos personales.
+- El historial de archivos conserva hashes y metadatos, no los bytes ni el nombre original.
+- La autenticación es compartida: no hay usuarios individuales, MFA ni SSO.
+- No hay rate limiting de aplicación ni auditoría inmutable configurados en este MVP.
 
-## Límites y medidas adicionales antes de usar con datos reales
+Geolocalización y ASN no son reputación. Un IOC válido, una coincidencia o un resultado de IA no son por sí solos prueba de un incidente.
 
-HTTP Basic protege el acceso solo cuando se utiliza sobre HTTPS. Para una plataforma expuesta a Internet con varios usuarios, añade un proveedor de identidad/SSO, limitación de intentos en el perímetro, gestión de usuarios y auditoría. No reutilices contraseñas personales. La autenticación HTTP Basic del prototipo no ofrece cuentas individuales, MFA ni cierre de sesión centralizado.
+## Pruebas automatizadas
 
-Esta versión todavía no incorpora reputación automática de amenazas, listas de abuso externas, ClamAV, sandbox, conectores SIEM/EDR ni alertas en tiempo real. YARA es opcional y requiere reglas locales configuradas. La correlación disponible es manual y local; el Incident Center permite registrar casos manualmente. No subas muestras confidenciales ni datos personales hasta completar una revisión de seguridad y pruebas de despliegue. Un indicador válido o desconocido no demuestra por sí solo un ataque activo.
+```bash
+ruff check .
+pytest -q
+```
+
+GitHub Actions ejecuta los controles de calidad en los commits de `main`. La ejecución debe terminar en verde antes de considerar un cambio listo para desplegar.
+
+## Guion de pruebas manuales en Render
+
+Utiliza exclusivamente los siguientes datos de demostración y archivos de texto ficticios:
+
+1. Abrir la URL de la aplicación y confirmar que solicita autenticación.
+2. Abrir `/api/health` y comprobar que responde con estado `ok`.
+3. En IP Intelligence, analizar `8.8.8.8` dejando desmarcada la consulta externa.
+4. En Domain Intelligence, analizar `example.com` sin marcar consulta DNS.
+5. En Email Intelligence, analizar `analyst@example.com`.
+6. En Threat Intelligence, guardar un IOC de prueba y comprobar que aparece en el catálogo.
+7. Registrar un evento con el mismo indicador y comprobar que aparece una coincidencia local.
+8. Crear un incidente de prueba y cambiar su estado.
+9. Subir un archivo TXT ficticio con un indicador de ejemplo; revisar candidatos y aprobar manualmente solo uno.
+10. Comprobar el historial y el dashboard. Recordar que los datos pueden desaparecer al reiniciar o desplegar.
+
+No habilites consultas externas ni el copiloto IA durante la primera ronda de pruebas. Una vez validados los flujos locales, cada integración externa debe probarse por separado y con consentimiento.
+
+## Pendiente antes de producción
+
+Persistencia y copias de seguridad verificadas, gestión individual de usuarios y MFA/SSO, rate limiting, auditoría, revisión integral de seguridad, pruebas de carga y monitorización. También faltan conectores SIEM/EDR, ingesta automática, reputación externa de IOC, ClamAV y sandbox aislada.
+
+La futura portabilidad a un servidor propio se abordará en una fase separada. El Dockerfile actual está orientado a la CLI; el contenedor web y la persistencia en volumen deberán prepararse y probarse antes de migrar.
