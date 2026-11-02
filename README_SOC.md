@@ -56,7 +56,7 @@ No introduzcas datos de pago para esta configuración. Si Render muestra un cost
 - IP Intelligence: clasificación local IPv4/IPv6 y enriquecimiento geográfico/ASN opt-in para IP públicas.
 - Domain Intelligence: validación local del formato y consultas DNS A, AAAA, MX, TXT y _dmarc únicamente con consentimiento explícito. No incluye reputación ni DKIM.
 - Email Intelligence: validación local de sintaxis y normalización del dominio, sin consultar ni transmitir la dirección.
-- Threat Intelligence: catálogo IOC local para IP, dominios, correos y hashes SHA-256, con fuente y confianza documentadas; importación CSV validada de hasta 5000 filas y 1 MB.
+- Threat Intelligence: catálogo IOC local para IP, dominios, correos y hashes SHA-256, con fuente y confianza documentadas; importación local de CSV y Excel .xlsx validada de hasta 5000 filas y 2 MB (primera hoja; .xls no soportado).
 - Event Correlation: registro manual de eventos y coincidencia exacta contra el catálogo IOC local; los resultados son pistas, no incidentes confirmados.
 - File Intelligence: tamaño, tipo por firma y hashes SHA-256/SHA-1/MD5; límite de 10 MB; sin ejecución ni envío externo. Incluye interfaz opcional para reglas YARA locales mediante `KYROS_YARA_RULES` e instalación `pip install -e '.[yara]'`; no incluye reglas propias ni ClamAV.
 - Incident Center: creación manual de casos, severidad y estados abierto/reconocido/cerrado.
@@ -65,7 +65,7 @@ No introduzcas datos de pago para esta configuración. Si Render muestra un cost
 
 Los incidentes son registros manuales; no se generan detecciones automáticas ni se declara un ataque activo sin telemetría correlacionada.
 
-## Seguridad y fuentes externas
+## Formato de importación IOC\n\nLa importación acepta `.csv` UTF-8 y `.xlsx` (primera hoja). Columnas obligatorias: `indicator_type` e `indicator`; opcionales: `confidence` (0–100, por defecto 50), `source` y `description`. Tipos admitidos: `ip`, `domain`, `email`, `sha256`. Límite de 2 MB y 5000 filas. Los valores se validan antes de guardarse localmente; las filas no válidas se informan sin detener el resto de la importación. Los archivos `.xls` antiguos no están soportados.\n\n## Seguridad y fuentes externas
 
 - Autenticación HTTP Basic obligatoria en dashboard y endpoints API.
 - La aplicación falla de forma cerrada (503) si las credenciales no están configuradas o la contraseña tiene menos de 16 caracteres.
