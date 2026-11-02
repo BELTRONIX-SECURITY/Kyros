@@ -245,6 +245,17 @@ async def health():
     return {"status": "ok", "service": "Kyros SOC", "version": "0.6.0"}
 
 
+@app.get("/api/session")
+async def session_status(request: Request):
+    try:
+        username = require_auth(request)
+        return {"authenticated": True, "username": username}
+    except HTTPException as exc:
+        if exc.status_code in {401, 503}:
+            return {"authenticated": False}
+        raise
+
+
 @app.get("/api/ai/status", dependencies=[Depends(require_auth)])
 async def ai_status():
     return ai_configuration()
@@ -321,8 +332,10 @@ async def dashboard_metrics():
     return dashboard_summary()
 
 
-@app.post("/api/analyze/ip", dependencies=[Depends(require_auth)])
+@app.post("/api/analyze/ip")
 async def analyze_ip(request: IndicatorRequest):
+    if request.external_lookup:
+        raise HTTPException(status_code=403, detail="El enriquecimiento externo requiere acceso de administrador.")
     try:
         result = classify_ip(request.indicator)
         if request.external_lookup:
@@ -336,14 +349,15 @@ async def analyze_ip(request: IndicatorRequest):
                     "geolocalización y ASN son aproximados y no constituyen reputación ni evidencia "
                     "de actividad maliciosa."
                 )
-        result["history_id"] = save_analysis("ip", result["indicator"], result)
         return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/domain", dependencies=[Depends(require_auth)])
+@app.post("/api/analyze/domain")
 async def analyze_domain(request: IndicatorRequest):
+    if request.external_lookup:
+        raise HTTPException(status_code=403, detail="Las consultas DNS externas requieren acceso de administrador.")
     try:
         result = classify_domain(request.indicator)
         if request.external_lookup:
@@ -353,23 +367,21 @@ async def analyze_domain(request: IndicatorRequest):
                 "Se consultó el DNS configurado para A, AAAA, MX, TXT y DMARC. "
                 "La consulta revela el dominio al resolvedor DNS; no constituye una evaluación de reputación."
             )
-        result["history_id"] = save_analysis("domain", result["indicator"], result)
         return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/email", dependencies=[Depends(require_auth)])
+@app.post("/api/analyze/email")
 async def analyze_email(request: IndicatorRequest):
     try:
         result = classify_email(request.indicator)
-        result["history_id"] = save_analysis("email", result["indicator"], result)
         return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/file", dependencies=[Depends(require_auth)])
+@app.post("/api/analyze/file")
 async def analyze_uploaded_file(file: UploadFile = File(...)):
     data = await file.read(MAX_FILE_SIZE + 1)
     await file.close()
@@ -378,7 +390,6 @@ async def analyze_uploaded_file(file: UploadFile = File(...)):
     try:
         result = analyze_file(data, file.filename)
         result["yara"] = scan_yara(data)
-        result["history_id"] = save_analysis("file", result["hashes"]["sha256"], result)
         return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -600,7 +611,7 @@ async def add_incident_evidence_item(incident_id: int, request: IncidentEvidence
             "evidence_bytes_stored": False}
 
 
-@app.get("/", include_in_schema=False, dependencies=[Depends(require_auth)])
+@app.get("/", include_in_schema=False)
 async def dashboard():
     index = STATIC_DIR / "index.html"
     if not index.is_file():
