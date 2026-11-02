@@ -311,7 +311,7 @@ def test_threat_intel_accepts_binary_file_without_text_extraction(monkeypatch, t
     monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
     response = client.post(
         "/api/threat-intel/analyze-file",
-        files={"file": ("sample.bin", b"\\x00\\xff\\x01binary-data", "application/octet-stream")},
+        files={"file": ("sample.bin", bytes([0, 255, 1]) + b"binary-data", "application/octet-stream")},
         headers={"X-Kyros-Request": "1"},
         auth=("soc-admin", "a-strong-test-password-123"),
     )
