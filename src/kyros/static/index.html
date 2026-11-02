@@ -86,9 +86,9 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 </section>
 
 <section class="page" id="page-file">
-<div class="page-head"><div><div class="eyebrow">Static file triage</div><h1>File Intelligence</h1><div class="muted">Identificación inicial, hashes y metadatos de archivos.</div></div></div>
+<div class="page-head"><div><div class="eyebrow">Static file triage</div><h1>File Intelligence</h1><div class="muted">Identificación por firma y estructura, hashes y revisión estática de documentos Office.</div></div></div>
 <div class="panel"><div class="field"><label>Archivo (máximo 10 MB)</label><input id="file" type="file"></div><button class="btn" onclick="analyzeFile()">Analizar archivo</button><pre class="output" id="file-output">Selecciona un archivo para iniciar el triaje.</pre></div>
-<div class="note">El archivo se procesa en memoria, no se ejecuta ni se envía a terceros. Esta fase todavía no incluye YARA, ClamAV, sandbox ni veredicto antivirus. Evita subir muestras confidenciales.</div>
+<div class="note">El archivo se procesa en memoria y no se ejecuta ni se envía a terceros. En documentos Office se valida la estructura Open XML y se indican macros, fórmulas y enlaces externos cuando se detectan. Estos elementos no constituyen por sí solos un veredicto de malware. YARA es opcional; ClamAV y sandbox no están integrados. Evita subir muestras confidenciales.</div>
 </section>
 
 <section class="page" id="page-threat">
