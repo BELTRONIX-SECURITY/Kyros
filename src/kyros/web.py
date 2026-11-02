@@ -25,7 +25,7 @@ from kyros.database import (
     dashboard_summary, list_analyses, list_incidents, list_security_events, list_threat_indicators,
     save_analysis, update_incident_status,
 )
-from kyros.soc import MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip, scan_yara
+from kyros.soc import (MAX_FILE_SIZE, analyze_file, classify_domain, classify_email, classify_ip,\n                      extract_ioc_candidates, scan_yara)
 
 STATIC_DIR = Path(__file__).parent / "static"
 security = HTTPBasic(auto_error=False)
@@ -280,6 +280,34 @@ async def analyze_uploaded_file(file: UploadFile = File(...)):
         result["yara"] = scan_yara(data)
         result["history_id"] = save_analysis("file", result["hashes"]["sha256"], result)
         return result
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+
+@app.post("/api/threat-intel/analyze-file", dependencies=[Depends(require_auth)])
+async def analyze_threat_intel_file(file: UploadFile = File(...)):
+    """Receive any file for local hash triage and extract review-only IOCs from supported text formats."""
+    data = await file.read(MAX_FILE_SIZE + 1)
+    await file.close()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="El tamaño máximo permitido es 10 MB.")
+    try:
+        analysis = analyze_file(data, file.filename)
+        analysis.pop("filename", None)
+        analysis["yara"] = scan_yara(data)
+        candidates = extract_ioc_candidates(data, file.filename)
+        history_id = save_analysis("threat_file", analysis["hashes"]["sha256"], analysis)
+        return {
+            "analysis": analysis,
+            "ioc_extraction": candidates,
+            "history_id": history_id,
+            "stored_locally": True,
+            "external_submission": False,
+            "execution_performed": False,
+            "auto_imported": False,
+            "note": "Los indicadores extraídos son candidatos no verificados. Deben revisarse y guardarse manualmente.",
+        }
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
