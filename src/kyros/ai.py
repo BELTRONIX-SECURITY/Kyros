@@ -19,6 +19,9 @@ def ai_configuration() -> dict:
         return {"enabled": False, "provider": "invalid_configuration", "model": None}
     if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
         return {"enabled": False, "provider": "https_required", "model": None}
+    api_key = os.getenv("KYROS_AI_API_KEY", "").strip()
+    if parsed.hostname == "api.openai.com" and not api_key:
+        return {"enabled": False, "provider": "api_key_required", "model": None}
     return {"enabled": True, "provider": "openai_compatible", "model": model}
 
 
