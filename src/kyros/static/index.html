@@ -195,10 +195,23 @@ function renderResultValue(parent,key,value,depth=0){
 }
 function setOutput(id,value){
  const el=document.getElementById(id);el.replaceChildren();
- if(typeof value==="string"&&value.length>180){el.classList.add("result-view");const h=document.createElement("div");h.className="result-title";h.textContent="Informe del copiloto · Análisis SOC";el.append(h);value.split("\\n").forEach(line=>{const p=document.createElement("p");p.style.whiteSpace="pre-wrap";p.style.margin="8px 0";p.textContent=line;el.append(p)});const n=document.createElement("div");n.className="note";n.textContent="Evaluación orientativa: valida evidencias y contexto antes de declarar un incidente.";el.append(n);return}if(!value||typeof value!=="object"){el.classList.remove("result-view");el.textContent=String(value??"");return}
+ if(typeof value==="string"&&value.length>180){el.classList.add("result-view");const details=document.createElement("details");details.className="result-raw";details.open=true;const summary=document.createElement("summary");summary.textContent="Resumen profesional SOC L2";const report=document.createElement("div");report.className="result-section";value.split("\\n").forEach(line=>{const p=document.createElement("p");p.style.whiteSpace="pre-wrap";p.style.margin="8px 0";p.textContent=line;report.append(p)});details.append(summary,report);el.append(details);const n=document.createElement("div");n.className="note";n.textContent="Evaluación orientativa: valida evidencias y contexto antes de declarar un incidente.";el.append(n);return}if(!value||typeof value!=="object"){el.classList.remove("result-view");el.textContent=String(value??"");return}
  el.classList.add("result-view");
  const head=document.createElement("div");head.className="result-head";const title=document.createElement("div");title.className="result-title";title.textContent=value.analysis_type?resultLabel(value.analysis_type)+" · Resultado del análisis":(value.status? "Resultado · "+String(value.status):"Resultado del análisis");head.append(title);if(value.risk){const badge=document.createElement("span");badge.className="result-status "+resultTone("risk",value.risk);badge.textContent="Riesgo: "+String(value.risk);head.append(badge)}el.append(head);
  Object.entries(value).filter(([k])=>!["analysis_type"].includes(k)).forEach(([k,v])=>renderResultValue(el,k,v));
+ const assessment=value.assessment&&typeof value.assessment==="object"?value.assessment:null;
+ if(assessment){
+  const executive=document.createElement("details");executive.className="result-raw";executive.open=true;
+  const executiveTitle=document.createElement("summary");executiveTitle.textContent="Resumen profesional SOC L2";executive.append(executiveTitle);
+  const summaryFields=["analysis_level","risk","severity","confidence","case_status","verdict","conclusion"];
+  const summaryData={};summaryFields.forEach(k=>{if(assessment[k]!==undefined)summaryData[k]=assessment[k]});
+  if(assessment.facts)summaryData.facts=assessment.facts;
+  if(assessment.recommendations)summaryData.recommendations=assessment.recommendations;
+  if(assessment.missing_evidence)summaryData.missing_evidence=assessment.missing_evidence;
+  renderResultValue(executive,"Evaluación ejecutiva",summaryData);
+  executiveTitle.insertAdjacentText("afterend"," ");
+  el.append(executive);
+ }
  const details=document.createElement("details");details.className="result-raw";const summary=document.createElement("summary");summary.textContent="Ver respuesta técnica completa (JSON)";const pre=document.createElement("pre");pre.textContent=JSON.stringify(value,null,2);details.append(summary,pre);el.append(details)
 }
 async function api(url,options={}){const r=await fetch(url,options);let data;try{data=await r.json()}catch{data={detail:"Respuesta no válida del servidor"}}if(!r.ok)throw new Error(data.detail||("HTTP "+r.status));return data}
