@@ -332,3 +332,28 @@ def test_threat_intel_file_rejects_over_10mb(monkeypatch):
         auth=("soc-admin", "a-strong-test-password-123"),
     )
     assert response.status_code == 413
+
+
+def test_analyst_can_manually_add_extracted_ioc_candidate(monkeypatch, tmp_path):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("KYROS_DB_PATH", str(tmp_path / "kyros.sqlite3"))
+    response = client.post(
+        "/api/threat-intel/indicators",
+        json={
+            "indicator_type": "domain",
+            "indicator": "example.org",
+            "confidence": 50,
+            "source": "file:evidence.txt",
+            "description": "Candidato extraído localmente; requiere validación contextual del analista.",
+        },
+        headers={"X-Kyros-Request": "1"},
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert response.status_code == 200
+    assert response.json()["stored_locally"] is True
+    listed = client.get(
+        "/api/threat-intel/indicators",
+        auth=("soc-admin", "a-strong-test-password-123"),
+    )
+    assert listed.status_code == 200
+    assert any(item["indicator"] == "example.org" for item in listed.json()["items"])
