@@ -56,6 +56,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <button class="nav" data-page="file"><span class="ico">▤</span>File Intelligence</button>
 <button class="nav" data-page="email"><span class="ico">✉</span>Email Intelligence</button>
 <button class="nav admin-only" data-page="threat"><span class="ico">⌁</span>Threat Intelligence</button>
+<button class="nav admin-only" data-page="siem"><span class="ico">⌁</span>SIEM Log Analyzer</button>
 <button class="nav admin-only" data-page="events"><span class="ico">⌘</span>Event Correlation</button>
 <button class="nav admin-only" data-page="incidents"><span class="ico">⚑</span>Incident Center</button>
 <button class="nav admin-only" data-page="history"><span class="ico">◷</span>Historial</button>
@@ -117,6 +118,27 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <div class="field"><label>Indicador</label><input id="ioc-value" placeholder="IP, dominio, email o hash"></div><div class="field"><label>Fuente / referencia</label><input id="ioc-source" maxlength="100" placeholder="Ej. análisis interno, informe, fuente OSINT"></div><div class="field"><label>Descripción y contexto</label><textarea id="ioc-description" maxlength="1000"></textarea></div><button class="btn" onclick="addIOC()">Guardar IOC local</button><pre class="output" id="ioc-message">Los indicadores se almacenan en la base local. No se consultan fuentes externas automáticamente.</pre></div>
 <div class="panel" style="margin-top:16px"><h2>Catálogo IOC</h2><div class="table-wrap"><table class="activity"><thead><tr><th>Tipo</th><th>Indicador</th><th>Confianza</th><th>Fuente</th><th>Fecha</th></tr></thead><tbody id="ioc-body"></tbody></table></div></div>
 <div class="note">La confianza es una valoración introducida por el analista, no un veredicto automático de Kyros. Este catálogo es local y no ingiere feeds externos.</div>
+</section>
+
+<section class="page admin-only" id="page-siem">
+<div class="page-head"><div><div class="eyebrow">Local SIEM analytics</div><h1>SIEM Log Analyzer</h1><div class="muted">Importación Excel/CSV, normalización, correlación heurística e informe SOC L2.</div></div></div>
+<div class="panel">
+<div class="field"><label>Archivo SIEM Excel (.xlsx) o CSV UTF-8 · máximo 12 MB / 20.000 eventos</label><input id="siem-file" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"></div>
+<button class="btn" id="siem-run" onclick="runSIEMAnalysis()">Analizar y correlacionar eventos</button>
+<div class="note">Procesamiento local en Kyros. El archivo original no se almacena ni se envía a terceros. Se admiten columnas comunes de Windows, PowerShell, IIS, proxy y firewall; los encabezados se normalizan automáticamente.</div>
+<pre class="output" id="siem-status">Selecciona un archivo para comenzar.</pre>
+</div>
+<div id="siem-results" style="display:none;margin-top:16px">
+<div class="grid three">
+<div class="panel"><div class="muted">Eventos analizados</div><div class="metric" id="siem-total">—</div></div>
+<div class="panel"><div class="muted">Incidentes candidatos</div><div class="metric" id="siem-count">—</div></div>
+<div class="panel"><div class="muted">Prioridad alta/crítica</div><div class="metric" id="siem-high">—</div></div>
+</div>
+<div class="panel" style="margin-top:16px"><div class="result-head"><h2>Informe SOC L2</h2><button class="btn secondary" onclick="exportSIEMReport()">Exportar informe PDF</button></div><pre class="output" id="siem-report"></pre></div>
+<div class="panel" style="margin-top:16px"><h2>Incidentes y correlaciones</h2><div id="siem-incidents"></div></div>
+<div class="panel" style="margin-top:16px"><h2>Eventos normalizados</h2><div class="muted" id="siem-event-note"></div><div class="table-wrap"><table class="activity"><thead><tr><th>Fila</th><th>Fecha UTC</th><th>Host</th><th>Event ID</th><th>Usuario</th><th>Origen</th><th>Señales</th></tr></thead><tbody id="siem-event-body"></tbody></table></div></div>
+<div class="panel" style="margin-top:16px"><h2>Copiloto IA — revisión opcional</h2><p class="note">La revisión local no necesita IA. Si autorizas, solo se envía el resumen de hallazgos seleccionado (máximo 7.000 caracteres); nunca el Excel original ni los 715 registros completos.</p><label><input type="checkbox" id="siem-ai-consent"> Autorizo expresamente enviar este resumen al proveedor IA configurado.</label><button class="btn secondary" style="margin-top:10px" onclick="reviewSIEMWithAI()">Solicitar revisión IA</button><pre class="output" id="siem-ai-result">Pendiente de autorización y configuración del proveedor.</pre></div>
+</div>
 </section>
 
 <section class="page admin-only" id="page-events">
@@ -198,7 +220,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 </section>
 </div></main></div>
 <script>
-const pageNames={overview:"Resumen general",ip:"IP Intelligence",domain:"Domain Intelligence",file:"File Intelligence",email:"Email Intelligence",threat:"Threat Intelligence",events:"Event Correlation",incidents:"Incident Center",history:"Historial",platform:"Estado e integraciones",ai:"Copiloto IA"};
+const pageNames={overview:"Resumen general",ip:"IP Intelligence",domain:"Domain Intelligence",file:"File Intelligence",email:"Email Intelligence",threat:"Threat Intelligence",events:"Event Correlation",siem:"SIEM Log Analyzer",incidents:"Incident Center",history:"Historial",platform:"Estado e integraciones",ai:"Copiloto IA"};
 function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.getElementById("page-"+name).classList.add("active");document.querySelectorAll(".nav[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===name));document.getElementById("crumb").textContent=pageNames[name];if(name==="overview")refreshDashboard();if(name==="incidents")loadIncidents();if(name==="history")loadHistory();if(name==="threat")loadThreatIntel();if(name==="events")loadCorrelation();if(name==="ai")checkAIStatus();}
 document.querySelectorAll(".nav[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
 function requestHeaders(json=false){const h={"X-Kyros-Request":"1"};if(json)h["Content-Type"]="application/json";return h}
@@ -339,7 +361,52 @@ async function loadCorrelation(){const body=document.getElementById("correlation
 async function checkAIStatus(){try{const d=await api("/api/ai/status");setOutput("ai-status",d.enabled?"Activo · "+d.provider+" · "+d.model:"No configurado · "+d.provider+" · Configura KYROS_AI_BASE_URL y KYROS_AI_MODEL en el servidor.")}catch(e){setOutput("ai-status","Error: "+e.message)}}
 async function runAIAnalysis(){const context=document.getElementById("ai-context").value.trim();if(!context){setOutput("ai-output","Introduce evidencia para analizar.");return}if(!document.getElementById("ai-consent").checked){setOutput("ai-output","Debes autorizar expresamente el envío del texto al proveedor IA.");return}setOutput("ai-output","Analizando…");try{const d=await api("/api/ai/analyze",{method:"POST",headers:requestHeaders(true),body:JSON.stringify({context,external_consent:true})});setOutput("ai-output",d.analysis+"\n\nProveedor: "+d.provider+" · Modelo: "+d.model+"\n"+d.note)}catch(e){setOutput("ai-output","Error: "+e.message)}}
 async function activateAdmin(){const b=document.getElementById("admin-login");const username=prompt("Usuario administrador de Kyros:");if(!username)return;const password=prompt("Contraseña:");if(!password)return;adminAuthHeader="Basic "+btoa(unescape(encodeURIComponent(username+":"+password)));b.disabled=true;b.textContent="Verificando acceso…";try{await api("/api/dashboard/summary");document.querySelectorAll(".admin-only").forEach(el=>el.classList.remove("admin-only"));b.textContent="Administrador activo";b.disabled=true;refreshDashboard()}catch(e){adminAuthHeader="";b.disabled=false;b.textContent="Acceso administrador";alert("Credenciales incorrectas o acceso no disponible.")}}
-async function checkHealth(){setOutput("health-output","Consultando…");try{setOutput("health-output",await api("/api/health"))}catch(e){setOutput("health-output","Error: "+e.message)}}
+
+let lastSIEMResult=null;
+function renderSIEMResults(d){
+ lastSIEMResult=d;
+ document.getElementById("siem-results").style.display="block";
+ document.getElementById("siem-total").textContent=d.total_events;
+ document.getElementById("siem-count").textContent=d.incident_count;
+ document.getElementById("siem-high").textContent=d.high_priority_count;
+ document.getElementById("siem-report").textContent=d.report||"Informe no disponible.";
+ document.getElementById("siem-event-note").textContent="Mostrando hasta 250 eventos de "+d.total_events+". Los números de fila remiten al Excel original.";
+ const cards=document.getElementById("siem-incidents");cards.replaceChildren();
+ if(!d.incidents.length){const p=document.createElement("p");p.textContent="No se identificaron patrones candidatos con las reglas actuales. Esto no demuestra ausencia de incidentes.";cards.append(p)}
+ d.incidents.forEach(item=>{
+  const box=document.createElement("div");box.className="result-item";box.style.marginBottom="10px";
+  const h=document.createElement("h3");h.textContent=item.id+" · "+item.title+" · "+item.severity.toUpperCase();
+  const desc=document.createElement("p");desc.textContent=item.description;
+  const meta=document.createElement("p");meta.className="muted";meta.textContent="Confianza: "+item.confidence+" · Eventos: "+item.event_count+" · Filas: "+item.event_rows.join(", ")+" · Hosts: "+(item.hosts.join(", ")||"No identificados");
+  const mitre=document.createElement("p");mitre.textContent="MITRE candidatos: "+(item.mitre_candidates.join(", ")||"No justificado");
+  box.append(h,desc,meta,mitre);cards.append(box)
+ });
+ const body=document.getElementById("siem-event-body");body.replaceChildren();
+ (d.events||[]).slice(0,250).forEach(e=>{const tr=document.createElement("tr");cell(tr,e.row_number);cell(tr,e.timestamp);cell(tr,e.hostname);cell(tr,e.event_id);cell(tr,e.user);cell(tr,e.source_ip);cell(tr,(e.signals||[]).join(", ")||"—");body.append(tr)});
+}
+async function runSIEMAnalysis(){
+ const input=document.getElementById("siem-file");if(!input.files.length){setOutput("siem-status","Selecciona un archivo .xlsx o .csv.");return}
+ const file=input.files[0];if(file.size>12*1024*1024){setOutput("siem-status","El archivo supera 12 MB.");return}
+ const button=document.getElementById("siem-run");button.disabled=true;setOutput("siem-status","Procesando localmente y correlacionando eventos…");
+ const form=new FormData();form.append("file",file);
+ try{const d=await api("/api/siem/analyze",{method:"POST",headers:requestHeaders(),body:form});renderSIEMResults(d);setOutput("siem-status",{status:"Análisis completado",filename:d.filename,total_events:d.total_events,incident_count:d.incident_count,processed_locally:d.privacy.processed_locally,external_submission:d.privacy.external_submission,file_stored:d.privacy.file_stored})}
+ catch(e){setOutput("siem-status","Error: "+e.message);document.getElementById("siem-results").style.display="none"}
+ finally{button.disabled=false}
+}
+function exportSIEMReport(){
+ if(!lastSIEMResult)return;const w=window.open("","_blank");if(!w){alert("Permite ventanas emergentes para exportar el informe.");return}
+ const safe=String(lastSIEMResult.report||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+ w.document.write("<!doctype html><html><head><meta charset='utf-8'><title>Kyros SOC L2</title><style>body{font:12pt Arial,sans-serif;line-height:1.5;margin:28mm 20mm;color:#172033}pre{white-space:pre-wrap;font:11pt Arial}h1{font-size:20pt}</style></head><body><h1>KYROS SOC — Informe L2</h1><pre>"+safe+"</pre><script>window.onload=()=>window.print()<\/script></body></html>");w.document.close();
+}
+async function reviewSIEMWithAI(){
+ if(!lastSIEMResult){setOutput("siem-ai-result","Primero analiza un archivo.");return}
+ if(!document.getElementById("siem-ai-consent").checked){setOutput("siem-ai-result","Debes autorizar expresamente el envío del resumen.");return}
+ const context=(lastSIEMResult.report+"\n\nSeñales: "+JSON.stringify(lastSIEMResult.signal_counts)+"\nIncidentes: "+JSON.stringify(lastSIEMResult.incidents.map(x=>({title:x.title,severity:x.severity,confidence:x.confidence,event_rows:x.event_rows,description:x.description,limitations:x.limitations})))).slice(0,7000);
+ setOutput("siem-ai-result","Enviando únicamente el resumen autorizado…");
+ try{const d=await api("/api/siem/ai-review",{method:"POST",headers:requestHeaders(true),body:JSON.stringify({context,external_consent:true})});setOutput("siem-ai-result",d)}
+ catch(e){setOutput("siem-ai-result","Error: "+e.message)}
+}
+\nasync function checkHealth(){setOutput("health-output","Consultando…");try{setOutput("health-output",await api("/api/health"))}catch(e){setOutput("health-output","Error: "+e.message)}}
 document.querySelectorAll(".admin-only").forEach(el=>el.classList.add("admin-only"));
 </script>
 </body></html>
