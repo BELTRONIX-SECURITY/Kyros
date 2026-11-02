@@ -255,6 +255,16 @@ function setOutput(id,value){
   if(list.childNodes.length)section.append(list);
   summary.append(section);
  };
+ const exportButton=document.createElement("button");exportButton.type="button";exportButton.className="btn secondary small";exportButton.textContent="Exportar informe a PDF";
+ exportButton.addEventListener("click",()=>{
+  const printWindow=window.open("","_blank");
+  if(!printWindow){alert("Permite las ventanas emergentes para generar el PDF.");return;}
+  const reportHtml=summary.outerHTML;
+  printWindow.document.open();
+  printWindow.document.write("<!doctype html><html lang='es'><head><meta charset='utf-8'><title>Informe SOC L2 · Kyros</title><style>body{font-family:Arial,sans-serif;color:#172033;margin:28px;font-size:11pt;line-height:1.5}h1{font-size:19pt;margin:0 0 6px}h4{font-size:11pt;color:#176b68;margin:16px 0 7px}.result-section{border-top:1px solid #ccd5df;margin-top:12px;padding-top:9px}.result-list{padding-left:18px}.result-list li{margin:5px 0;overflow-wrap:anywhere}.note{border-left:3px solid #278c83;padding:10px;margin-top:16px;background:#f1f7f6}.meta{color:#536174;font-size:9pt;margin-bottom:18px}@page{size:A4;margin:16mm}</style></head><body><h1>KYROS SOC</h1><div class='meta'>Informe de análisis · SOC L2 · Generado: "+new Date().toLocaleString("es-ES")+"</div>"+reportHtml+"</body></html>");
+  printWindow.document.close();printWindow.focus();printWindow.print();
+ });
+ summary.append(exportButton);
  const heading=document.createElement("h4");heading.textContent="INFORME DE ANÁLISIS · SOC L2";summary.append(heading);
  const executive=document.createElement("p");executive.style.whiteSpace="pre-wrap";executive.style.margin="8px 0";
  const conclusion=a&&(a.conclusion||a.executive_summary||a.summary);
