@@ -39,7 +39,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 .result-list li{background:#111f32;border-radius:7px;padding:9px 11px;overflow-wrap:anywhere}
 .result-status{display:inline-flex;padding:4px 9px;border-radius:20px;background:#24354a;color:#d2deed;font-size:10px;font-weight:700}
 .result-status.good{background:#173b35;color:#9be5d0}.result-status.warn{background:#493a24;color:#f4d18b}.result-status.bad{background:#4a2834;color:#ffb2bf}
-.result-raw{margin-top:14px;color:#91a3bb;font-size:11px}.result-raw summary{cursor:pointer;padding:6px 0}
+.result-tabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #263b55;padding:8px 0;margin:8px 0 14px}.result-tab{background:#111f32;border:1px solid #263b55;color:#b7c7dc;border-radius:8px;padding:9px 12px;font:600 12px Inter,Segoe UI,Arial;cursor:pointer}.result-tab.active{background:#1c3d57;border-color:#4386a8;color:#fff}.result-panel[hidden]{display:none}.result-panel>pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07101c;border:1px solid #1d3047;border-radius:8px;padding:12px;color:#b7c7dc;font:11px/1.5 ui-monospace,Consolas,monospace;max-height:420px;overflow:auto}.result-raw{margin-top:14px;color:#91a3bb;font-size:11px}.result-raw summary{cursor:pointer;padding:6px 0}
 .result-raw pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07101c;border:1px solid #1d3047;border-radius:8px;padding:12px;color:#b7c7dc;font:11px/1.5 ui-monospace,Consolas,monospace;max-height:340px;overflow:auto}
 @media(max-width:640px){.result-view{padding:12px}.result-grid{grid-template-columns:1fr 1fr}}
 </style>
@@ -219,24 +219,47 @@ function renderResultValue(parent,key,value,depth=0){
 }
 function setOutput(id,value){
  const el=document.getElementById(id);el.replaceChildren();
- if(typeof value==="string"&&value.length>180){el.classList.add("result-view");const details=document.createElement("details");details.className="result-raw";details.open=true;const summary=document.createElement("summary");summary.textContent="Resumen profesional SOC L2";const report=document.createElement("div");report.className="result-section";value.split("\\n").forEach(line=>{const p=document.createElement("p");p.style.whiteSpace="pre-wrap";p.style.margin="8px 0";p.textContent=line;report.append(p)});details.append(summary,report);el.append(details);const n=document.createElement("div");n.className="note";n.textContent="Evaluación orientativa: valida evidencias y contexto antes de declarar un incidente.";el.append(n);return}if(!value||typeof value!=="object"){el.classList.remove("result-view");el.textContent=String(value??"");return}
+ if(typeof value==="string"&&value.length>180){
+  el.classList.add("result-view");
+  const tabs=document.createElement("div");tabs.className="result-tabs";
+  const summaryBtn=document.createElement("button");summaryBtn.className="result-tab active";summaryBtn.textContent="Resumen";
+  const rawBtn=document.createElement("button");rawBtn.className="result-tab";rawBtn.textContent="Ver respuesta técnica completa (JSON)";
+  const summaryPanel=document.createElement("div");summaryPanel.className="result-panel";
+  const report=document.createElement("div");report.className="result-section";
+  value.split("\\n").forEach(line=>{const p=document.createElement("p");p.style.whiteSpace="pre-wrap";p.style.margin="8px 0";p.textContent=line;report.append(p)});
+  summaryPanel.append(report);
+  const rawPanel=document.createElement("div");rawPanel.className="result-panel";rawPanel.hidden=true;
+  const pre=document.createElement("pre");pre.textContent=JSON.stringify({analysis:value},null,2);rawPanel.append(pre);
+  summaryBtn.addEventListener("click",()=>{summaryPanel.hidden=false;rawPanel.hidden=true;summaryBtn.classList.add("active");rawBtn.classList.remove("active")});
+  rawBtn.addEventListener("click",()=>{summaryPanel.hidden=true;rawPanel.hidden=false;rawBtn.classList.add("active");summaryBtn.classList.remove("active")});
+  tabs.append(summaryBtn,rawBtn);el.append(tabs,summaryPanel,rawPanel);
+  const n=document.createElement("div");n.className="note";n.textContent="Evaluación orientativa: valida evidencias y contexto antes de declarar un incidente.";el.append(n);return
+ }
+ if(!value||typeof value!=="object"){el.classList.remove("result-view");el.textContent=String(value??"");return}
  el.classList.add("result-view");
- const head=document.createElement("div");head.className="result-head";const title=document.createElement("div");title.className="result-title";title.textContent=value.analysis_type?resultLabel(value.analysis_type)+" · Resultado del análisis":(value.status? "Resultado · "+String(value.status):"Resultado del análisis");head.append(title);if(value.risk){const badge=document.createElement("span");badge.className="result-status "+resultTone("risk",value.risk);badge.textContent="Riesgo: "+String(value.risk);head.append(badge)}el.append(head);
- Object.entries(value).filter(([k])=>!["analysis_type"].includes(k)).forEach(([k,v])=>renderResultValue(el,k,v));
+ const head=document.createElement("div");head.className="result-head";const title=document.createElement("div");title.className="result-title";title.textContent=value.analysis_type?resultLabel(value.analysis_type)+" · Resultado del análisis":(value.status?"Resultado · "+String(value.status):"Resultado del análisis");head.append(title);if(value.risk){const badge=document.createElement("span");badge.className="result-status "+resultTone("risk",value.risk);badge.textContent="Riesgo: "+String(value.risk);head.append(badge)}el.append(head);
+ const tabs=document.createElement("div");tabs.className="result-tabs";
+ const summaryBtn=document.createElement("button");summaryBtn.className="result-tab active";summaryBtn.textContent="Resumen";
+ const rawBtn=document.createElement("button");rawBtn.className="result-tab";rawBtn.textContent="Ver respuesta técnica completa (JSON)";
+ const summaryPanel=document.createElement("div");summaryPanel.className="result-panel";
  const assessment=value.assessment&&typeof value.assessment==="object"?value.assessment:null;
  if(assessment){
-  const executive=document.createElement("details");executive.className="result-raw";executive.open=true;
-  const executiveTitle=document.createElement("summary");executiveTitle.textContent="Resumen profesional SOC L2";executive.append(executiveTitle);
-  const summaryFields=["analysis_level","risk","severity","confidence","case_status","verdict","conclusion"];
+  const executive=document.createElement("div");executive.className="result-section";
+  const executiveTitle=document.createElement("h4");executiveTitle.textContent="Evaluación ejecutiva";executive.append(executiveTitle);
+  const summaryFields=["analysis_level","risk","severity","confidence","case_status","verdict","conclusion","facts","recommendations","missing_evidence"];
   const summaryData={};summaryFields.forEach(k=>{if(assessment[k]!==undefined)summaryData[k]=assessment[k]});
-  if(assessment.facts)summaryData.facts=assessment.facts;
-  if(assessment.recommendations)summaryData.recommendations=assessment.recommendations;
-  if(assessment.missing_evidence)summaryData.missing_evidence=assessment.missing_evidence;
-  renderResultValue(executive,"Evaluación ejecutiva",summaryData);
-  executiveTitle.insertAdjacentText("afterend"," ");
-  el.append(executive);
+  renderResultValue(executive,"Resumen SOC L2",summaryData);summaryPanel.append(executive);
  }
- const details=document.createElement("details");details.className="result-raw";const summary=document.createElement("summary");summary.textContent="Ver respuesta técnica completa (JSON)";const pre=document.createElement("pre");pre.textContent=JSON.stringify(value,null,2);details.append(summary,pre);el.append(details)
+ const detailSection=document.createElement("div");detailSection.className="result-section";
+ const detailTitle=document.createElement("h4");detailTitle.textContent="Datos del análisis";detailSection.append(detailTitle);
+ Object.entries(value).filter(([k])=>!["analysis_type","assessment"].includes(k)).forEach(([k,v])=>renderResultValue(detailSection,k,v));
+ summaryPanel.append(detailSection);
+ if(!assessment){const note=document.createElement("div");note.className="note";note.textContent="Resumen de los datos devueltos por el motor de análisis. La respuesta no constituye por sí sola confirmación de un incidente.";summaryPanel.append(note)}
+ const rawPanel=document.createElement("div");rawPanel.className="result-panel";rawPanel.hidden=true;
+ const pre=document.createElement("pre");pre.textContent=JSON.stringify(value,null,2);rawPanel.append(pre);
+ summaryBtn.addEventListener("click",()=>{summaryPanel.hidden=false;rawPanel.hidden=true;summaryBtn.classList.add("active");rawBtn.classList.remove("active")});
+ rawBtn.addEventListener("click",()=>{summaryPanel.hidden=true;rawPanel.hidden=false;rawBtn.classList.add("active");summaryBtn.classList.remove("active")});
+ tabs.append(summaryBtn,rawBtn);el.append(tabs,summaryPanel,rawPanel)
 }
 let adminAuthHeader="";
 async function api(url,options={}){const headers={...(options.headers||{})};if(adminAuthHeader)headers.Authorization=adminAuthHeader;const r=await fetch(url,{...options,headers});let data;try{data=await r.json()}catch{data={detail:"Respuesta no válida del servidor"}}if(!r.ok)throw new Error(data.detail||("HTTP "+r.status));return data}
