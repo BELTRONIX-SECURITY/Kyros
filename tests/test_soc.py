@@ -121,3 +121,20 @@ def test_office_zip_expansion_limits_are_enforced():
     assert result["risk"] == "unknown"
     assert result["execution_performed"] is False
     assert result["external_submission"] is False
+
+
+def test_macro_enabled_word_is_identified_without_execution():
+    from io import BytesIO
+    from zipfile import ZipFile
+
+    stream = BytesIO()
+    with ZipFile(stream, "w") as archive:
+        archive.writestr("[Content_Types].xml", "<Types/>")
+        archive.writestr("word/document.xml", "<document/>")
+        archive.writestr("word/vbaProject.bin", b"VBA-project-placeholder")
+
+    result = analyze_file(stream.getvalue(), "report.docm")
+    assert result["file_type"] == "Microsoft Word (DOCM)"
+    assert result["structure"]["macro_project_present"] is True
+    assert result["structure"]["extension_matches_structure"] is True
+    assert result["execution_performed"] is False
