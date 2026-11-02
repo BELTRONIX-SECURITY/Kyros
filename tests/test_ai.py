@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from kyros.ai import MAX_AI_CONTEXT, ai_configuration, analyze_soc_context
@@ -23,17 +25,15 @@ def test_ai_rejects_remote_plain_http(monkeypatch):
     assert ai_configuration()["provider"] == "https_required"
 
 
-@pytest.mark.asyncio
-async def test_ai_requires_configured_provider(monkeypatch):
+def test_ai_requires_configured_provider(monkeypatch):
     monkeypatch.delenv("KYROS_AI_BASE_URL", raising=False)
     monkeypatch.delenv("KYROS_AI_MODEL", raising=False)
     with pytest.raises(RuntimeError):
-        await analyze_soc_context("SOC alert sample")
+        asyncio.run(analyze_soc_context("SOC alert sample"))
 
 
-@pytest.mark.asyncio
-async def test_ai_context_length_is_bounded(monkeypatch):
+def test_ai_context_length_is_bounded(monkeypatch):
     monkeypatch.setenv("KYROS_AI_BASE_URL", "http://127.0.0.1:11434/v1")
     monkeypatch.setenv("KYROS_AI_MODEL", "local-model")
     with pytest.raises(ValueError):
-        await analyze_soc_context("A" * (MAX_AI_CONTEXT + 1))
+        asyncio.run(analyze_soc_context("A" * (MAX_AI_CONTEXT + 1)))
