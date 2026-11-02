@@ -72,7 +72,7 @@ def _ooxml_analysis(data: bytes, filename: str | None = None) -> dict[str, Any] 
                     or oversized_parts or suspicious_ratio):
                 return {"file_type": "ZIP archive (contenido no inspeccionado: límites excedidos)",
                         "structure": {"valid_ooxml": False, "inspection": "resource_limit",
-                                      "entry_count": len(entries), "expanded_size_bytes": expanded_size, "expanded_size_bytes": expanded_size}}
+                                      "entry_count": len(entries), "expanded_size_bytes": expanded_size}}
             names = {item.filename for item in entries}
             if "[Content_Types].xml" not in names:
                 return None
