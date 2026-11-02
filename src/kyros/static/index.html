@@ -406,7 +406,8 @@ async function reviewSIEMWithAI(){
  try{const d=await api("/api/siem/ai-review",{method:"POST",headers:requestHeaders(true),body:JSON.stringify({context,external_consent:true})});setOutput("siem-ai-result",d)}
  catch(e){setOutput("siem-ai-result","Error: "+e.message)}
 }
-\nasync function checkHealth(){setOutput("health-output","Consultando…");try{setOutput("health-output",await api("/api/health"))}catch(e){setOutput("health-output","Error: "+e.message)}}
+
+async function checkHealth(){setOutput("health-output","Consultando…");try{setOutput("health-output",await api("/api/health"))}catch(e){setOutput("health-output","Error: "+e.message)}}
 document.querySelectorAll(".admin-only").forEach(el=>el.classList.add("admin-only"));
 </script>
 </body></html>
