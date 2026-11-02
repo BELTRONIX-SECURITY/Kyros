@@ -37,3 +37,12 @@ def test_ai_context_length_is_bounded(monkeypatch):
     monkeypatch.setenv("KYROS_AI_MODEL", "local-model")
     with pytest.raises(ValueError):
         asyncio.run(analyze_soc_context("A" * (MAX_AI_CONTEXT + 1)))
+
+
+def test_openai_cloud_requires_api_key(monkeypatch):
+    monkeypatch.setenv("KYROS_AI_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setenv("KYROS_AI_MODEL", "gpt-4o-mini")
+    monkeypatch.delenv("KYROS_AI_API_KEY", raising=False)
+    assert ai_configuration()["enabled"] is False
+    assert ai_configuration()["provider"] == "api_key_required"
+
