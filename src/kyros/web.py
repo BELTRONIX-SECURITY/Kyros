@@ -286,28 +286,62 @@ async def add_threat_intel(request: ThreatIndicatorCreate):
 
 
 
-@app.post("/api/threat-intel/import", dependencies=[Depends(require_auth)])
-async def import_threat_intel_csv(file: UploadFile = File(...)):
-    raw = await file.read(1024 * 1024 + 1)
-    await file.close()
-    if len(raw) > 1024 * 1024:
-        raise HTTPException(status_code=413, detail="El CSV supera el límite de 1 MB.")
+def _read_ioc_rows(filename: str, raw: bytes) -> tuple[list[dict], str]:
+    """Read CSV or XLSX locally; reject legacy XLS and oversized workbook expansion."""
+    suffix = Path(filename or "").suffix.lower()
+    if suffix == ".csv":
+        try:
+            reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
+        except UnicodeDecodeError as exc:
+            raise HTTPException(status_code=422, detail="El CSV debe estar codificado en UTF-8.") from exc
+        if not reader.fieldnames or not {"indicator_type", "indicator"}.issubset(
+            {name.strip().lower() for name in reader.fieldnames if name}
+        ):
+            raise HTTPException(status_code=422, detail="El CSV requiere columnas indicator_type e indicator.")
+        return list(reader), "csv"
+    if suffix != ".xlsx":
+        raise HTTPException(status_code=415, detail="Formato no admitido. Utiliza .csv o .xlsx; .xls no está soportado.")
     try:
-        text = raw.decode("utf-8-sig")
-        reader = csv.DictReader(io.StringIO(text))
-    except UnicodeDecodeError as exc:
-        raise HTTPException(status_code=422, detail="El CSV debe estar codificado en UTF-8.") from exc
-    required = {"indicator_type", "indicator"}
-    if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
-        raise HTTPException(status_code=422, detail="El CSV requiere columnas indicator_type e indicator.")
+        import zipfile
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            if sum(item.file_size for item in archive.infolist()) > 20 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="El contenido descomprimido del Excel supera 20 MB.")
+        from openpyxl import load_workbook
+        workbook = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+        sheet = workbook.active
+        iterator = sheet.iter_rows(values_only=True)
+        headers = next(iterator, None)
+        if not headers:
+            raise HTTPException(status_code=422, detail="El Excel está vacío.")
+        names = [str(value).strip().lower() if value is not None else "" for value in headers]
+        if not {"indicator_type", "indicator"}.issubset(set(names)):
+            raise HTTPException(status_code=422, detail="El Excel requiere columnas indicator_type e indicator.")
+        rows = []
+        for values in iterator:
+            if len(rows) >= 5000:
+                break
+            rows.append({names[i]: (str(value).strip() if value is not None else "")
+                         for i, value in enumerate(values[:len(names)]) if i < len(names) and names[i]})
+        workbook.close()
+        return rows, "xlsx"
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="No se pudo leer el Excel. Comprueba que sea un .xlsx válido.") from exc
+
+
+@app.post("/api/threat-intel/import", dependencies=[Depends(require_auth)])
+async def import_threat_intel_file(file: UploadFile = File(...)):
+    raw = await file.read(2 * 1024 * 1024 + 1)
+    await file.close()
+    if len(raw) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="El archivo supera el límite de 2 MB.")
+    rows, file_type = _read_ioc_rows(file.filename or "", raw)
     imported = 0
     errors = []
-    for row_number, row in enumerate(reader, start=2):
-        if row_number > 5001:
-            errors.append("Se alcanzó el máximo de 5000 filas.")
-            break
-        kind = (row.get("indicator_type") or "").strip().lower()
-        value = (row.get("indicator") or "").strip()
+    for row_number, row in enumerate(rows, start=2):
+        kind = str(row.get("indicator_type") or "").strip().lower()
+        value = str(row.get("indicator") or "").strip()
         try:
             if kind == "ip":
                 value = classify_ip(value)["indicator"]
@@ -322,20 +356,20 @@ async def import_threat_intel_csv(file: UploadFile = File(...)):
                 value = value.lower()
             else:
                 raise ValueError("Tipo no admitido.")
-            confidence = int((row.get("confidence") or "50").strip())
+            confidence = int(str(row.get("confidence") or "50").strip())
             if not 0 <= confidence <= 100:
                 raise ValueError("Confianza fuera del rango 0-100.")
             add_threat_indicator(
                 kind, value, confidence,
-                (row.get("source") or "csv-import").strip()[:100],
-                (row.get("description") or "").strip()[:1000],
+                str(row.get("source") or f"{file_type}-import").strip()[:100],
+                str(row.get("description") or "").strip()[:1000],
             )
             imported += 1
         except (ValueError, TypeError) as exc:
             errors.append(f"Fila {row_number}: {str(exc)[:180]}")
-    return {"imported": imported, "errors": errors[:100],
+    return {"file_type": file_type, "processed": len(rows), "imported": imported,
+            "rejected": len(errors), "errors": errors[:100],
             "stored_locally": True, "external_submission": False}
-
 
 @app.post("/api/events", dependencies=[Depends(require_auth)])
 async def ingest_security_event(request: SecurityEventCreate):
