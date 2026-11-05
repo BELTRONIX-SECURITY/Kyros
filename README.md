@@ -50,7 +50,7 @@ kyros-web
 
 Abre http://127.0.0.1:8000 y consulta la API en http://127.0.0.1:8000/docs. Incluye clasificación de IP, validación de dominios y análisis estático inicial de archivos (hashes y firmas básicas; límite 10 MB). Los archivos no se ejecutan ni se envían a terceros. Las consultas externas están desactivadas.
 
-Consulta [README_SOC.md](README_SOC.md) para el alcance, limitaciones y siguientes fases. Este MVP no incorpora todavía reputación externa, YARA/ClamAV, persistencia, correlación SIEM ni gestión de incidentes. No expongas la API fuera del equipo local sin controles de autenticación y seguridad adicionales.
+Consulta [README_SOC.md](README_SOC.md) para el alcance, limitaciones y siguientes fases. La interfaz pública permite análisis básicos de IP, dominio, correo y archivos con límites de uso; el panel SOC y las funciones administrativas permanecen protegidos por autenticación. Revisa las limitaciones de persistencia y seguridad antes de usar datos reales.
 
 ## Docker
 
