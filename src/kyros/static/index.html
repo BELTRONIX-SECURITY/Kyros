@@ -78,10 +78,10 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 </div><div class="sidebar-foot">KYROS SOC · 0.6.0<br>Defensive security workspace<br>Local-first · Privacy by design</div>
 </aside>
 <main>
-<header class="topbar"><div class="crumb">Workspace / <strong id="crumb">Resumen general</strong></div><div class="top-status">● API protegida · Local-first</div></header>
+<header class="topbar"><div class="crumb">Workspace / <strong id="crumb">Resumen general</strong></div><div class="top-status">● Acceso público · Administración protegida</div></header>
 <div class="content">
 <section class="page active" id="page-overview">
-<div class="page-head"><div><div class="eyebrow">KYROS SECURITY OPERATIONS CENTER</div><h1>Threat Intelligence Dashboard</h1><div class="muted">Visibilidad operativa basada en análisis, indicadores y casos registrados.</div></div><div class="soc-header-actions"><span class="soc-live">● API protegida</span><button class="btn secondary" onclick="refreshDashboard()">↻ Actualizar</button></div></div>
+<div class="page-head"><div><div class="eyebrow">KYROS SECURITY OPERATIONS CENTER</div><h1>Threat Intelligence Dashboard</h1><div class="muted">Visibilidad operativa basada en análisis, indicadores y casos registrados.</div></div><div class="soc-header-actions"><span class="soc-live">● Espacio público</span><button class="btn secondary" onclick="refreshDashboard()">↻ Actualizar</button></div></div>
 <div class="grid soc-kpis">
 <div class="card soc-kpi"><div class="soc-kpi-icon">◉</div><div class="metric-label">Análisis totales</div><div class="metric" id="m-total">—</div><div class="metric-note">Registros históricos</div></div>
 <div class="card soc-kpi"><div class="soc-kpi-icon">⌁</div><div class="metric-label">Análisis · 24 horas</div><div class="metric" id="m-24">—</div><div class="metric-note">Actividad reciente</div></div>
@@ -92,7 +92,7 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 <div class="grid soc-overview">
 <div class="soc-stack">
 <div class="panel soc-panel"><div class="panel-head"><div><h2>Incidentes por severidad</h2><div class="muted">Casos no cerrados</div></div><span class="tag">Real</span></div><div class="soc-donut-wrap"><div class="soc-donut" id="severity-donut"><div class="soc-donut-inner"><strong id="severity-total">0</strong><span>casos abiertos</span></div></div></div><div class="soc-legend" id="severity-legend"><span>Sin datos</span></div></div>
-<div class="panel soc-panel"><div class="panel-head"><div><h2>Estado de la operación</h2><div class="muted">Capacidades y fuentes</div></div></div><div class="soc-status"><span>API Kyros</span><strong class="soc-live">Protegida</strong></div><div class="soc-status"><span>Almacenamiento</span><strong>SQLite</strong></div><div class="soc-status"><span>SIEM / EDR</span><strong id="siem-connection-status">No conectado</strong></div><div class="soc-status"><span>Detección de ataque activo</span><strong>No determinada</strong></div></div>
+<div class="panel soc-panel"><div class="panel-head"><div><h2>Estado de la operación</h2><div class="muted">Capacidades y fuentes</div></div></div><div class="soc-status"><span>API Kyros</span><strong class="soc-live">Pública · módulos SOC protegidos</strong></div><div class="soc-status"><span>Almacenamiento</span><strong>SQLite</strong></div><div class="soc-status"><span>SIEM / EDR</span><strong id="siem-connection-status">No conectado</strong></div><div class="soc-status"><span>Detección de ataque activo</span><strong>No determinada</strong></div></div>
 </div>
 <div class="soc-stack soc-center">
 <div class="panel soc-panel"><div class="panel-head"><div><h2>Actividad por módulo</h2><div class="muted">Volumen real de análisis registrados</div></div><span class="tag">Histórico</span></div><div class="soc-chart" id="type-bars"><div class="soc-empty">Cargando métricas…</div></div></div>
@@ -492,5 +492,6 @@ async function reviewSIEMWithAI(){
 
 async function checkHealth(){setOutput("health-output","Consultando…");try{setOutput("health-output",await api("/api/health"))}catch(e){setOutput("health-output","Error: "+e.message)}}
 document.querySelectorAll(".admin-only").forEach(el=>el.classList.add("admin-only"));
+// El dashboard operativo y los módulos internos solo se cargan después de autenticar al administrador.
 </script>
 </body></html>
