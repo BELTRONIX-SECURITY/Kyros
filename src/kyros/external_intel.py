@@ -42,10 +42,12 @@ def build_assessment(result: dict, indicator_type: str) -> dict:
         detected = (result.get("detected_type") or "").lower()
         names = result.get("names", [])
         extensions = {str(name).rsplit(".", 1)[-1].lower() for name in names if "." in str(name)}
-        expected = {"xlsx": "xlsx", "xlsm": "xlsm", "docx": "docx", "docm": "docm",
-                    "pptx": "pptx", "pptm": "pptm", "exe": "pe"}
+        expected = {"xlsx": ("spreadsheet", "excel"), "xlsm": ("spreadsheet", "excel"),
+                    "docx": ("word", "document"), "docm": ("word", "document"),
+                    "pptx": ("presentation", "powerpoint"), "pptm": ("presentation", "powerpoint"),
+                    "exe": ("portable executable", "pe32", "windows executable")}
         if detected and extensions:
-            mismatches = [ext for ext in extensions if expected.get(ext, ext) not in detected]
+            mismatches = [ext for ext in extensions if not any(token in detected for token in expected.get(ext, (ext,)))]
             if mismatches:
                 findings.append("Se encontraron nombres alternativos cuya extensión no coincide con el tipo detectado: " + ", ".join(sorted(mismatches)[:8]) + ".")
                 recommendations.append("Verificar extensión, nombre de origen y tipo real; los nombres alternativos no prueban por sí solos suplantación.")
