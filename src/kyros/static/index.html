@@ -69,7 +69,13 @@ main{min-width:0}.topbar{height:68px;border-bottom:1px solid #1e2b40;display:fle
 </div>
 <div class="side-label">Plataforma</div>
 <button class="nav admin-only" data-page="platform"><span class="ico">⚙</span>Estado e integraciones</button>
-<button class="nav" id="admin-login" onclick="activateAdmin()">Acceso administrador</button><div class="sidebar-foot">KYROS SOC · 0.6.0<br>Defensive security workspace<br>Local-first · Privacy by design</div>
+<button class="nav" id="admin-login" type="button" onclick="activateAdmin()">Acceso administrador</button>
+<div id="admin-login-panel" style="display:none;padding:10px 12px;background:#101a2b;border:1px solid #263750;border-radius:9px;margin:8px 0">
+  <div class="field"><label for="admin-username">Usuario administrador</label><input id="admin-username" type="text" autocomplete="username" maxlength="80" style="width:100%;border:1px solid #334761;background:#091321;color:#e8eff9;border-radius:8px;padding:10px"></div>
+  <div class="field"><label for="admin-password">Contraseña</label><input id="admin-password" type="password" autocomplete="current-password" maxlength="256" style="width:100%;border:1px solid #334761;background:#091321;color:#e8eff9;border-radius:8px;padding:10px"></div>
+  <div class="actions"><button class="btn small" type="button" onclick="submitAdminLogin()">Ingresar</button><button class="btn secondary small" type="button" onclick="cancelAdminLogin()">Cancelar</button></div>
+  <div id="admin-login-message" class="muted" role="status" aria-live="polite" style="margin-top:8px"></div>
+</div><div class="sidebar-foot">KYROS SOC · 0.6.0<br>Defensive security workspace<br>Local-first · Privacy by design</div>
 </aside>
 <main>
 <header class="topbar"><div class="crumb">Workspace / <strong id="crumb">Resumen general</strong></div><div class="top-status">● API protegida · Local-first</div></header>
@@ -407,7 +413,38 @@ async function addEvent(){const body={source:document.getElementById("event-sour
 async function loadCorrelation(){const body=document.getElementById("correlation-body");body.replaceChildren();try{const d=await api("/api/correlation");if(!d.items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="No hay eventos registrados.";tr.append(td);body.append(tr);return}d.items.forEach(x=>{const tr=document.createElement("tr");cell(tr,new Date(x.event.created_at).toLocaleString());cell(tr,x.event.source+" / "+x.event.event_type);cell(tr,x.event.indicator);cell(tr,x.threat_match?"IOC #"+x.threat_match.id:"Sin coincidencia");cell(tr,x.assessment);body.append(tr)})}catch(e){const tr=document.createElement("tr");cell(tr,e.message);body.append(tr)}}
 async function checkAIStatus(){try{const d=await api("/api/ai/status");setOutput("ai-status",d.enabled?"Activo · "+d.provider+" · "+d.model:"No configurado · "+d.provider+" · Configura KYROS_AI_BASE_URL y KYROS_AI_MODEL en el servidor.")}catch(e){setOutput("ai-status","Error: "+e.message)}}
 async function runAIAnalysis(){const context=document.getElementById("ai-context").value.trim();if(!context){setOutput("ai-output","Introduce evidencia para analizar.");return}if(!document.getElementById("ai-consent").checked){setOutput("ai-output","Debes autorizar expresamente el envío del texto al proveedor IA.");return}setOutput("ai-output","Analizando…");try{const d=await api("/api/ai/analyze",{method:"POST",headers:requestHeaders(true),body:JSON.stringify({context,external_consent:true})});setOutput("ai-output",d.analysis+"\n\nProveedor: "+d.provider+" · Modelo: "+d.model+"\n"+d.note)}catch(e){setOutput("ai-output","Error: "+e.message)}}
-async function activateAdmin(){const b=document.getElementById("admin-login");const username=prompt("Usuario administrador de Kyros:");if(!username)return;const password=prompt("Contraseña:");if(!password)return;adminAuthHeader="Basic "+btoa(unescape(encodeURIComponent(username+":"+password)));b.disabled=true;b.textContent="Verificando acceso…";try{await api("/api/dashboard/summary");document.querySelectorAll(".admin-only").forEach(el=>el.classList.remove("admin-only"));b.textContent="Administrador activo";b.disabled=true;refreshDashboard()}catch(e){adminAuthHeader="";b.disabled=false;b.textContent="Acceso administrador";alert("Credenciales incorrectas o acceso no disponible.")}}
+function activateAdmin(){
+ const panel=document.getElementById("admin-login-panel");
+ const opening=panel.style.display==="none";
+ panel.style.display=opening?"block":"none";
+ if(opening){document.getElementById("admin-login-message").textContent="";document.getElementById("admin-username").focus()}
+}
+function cancelAdminLogin(){
+ adminAuthHeader="";
+ document.getElementById("admin-password").value="";
+ document.getElementById("admin-login-message").textContent="";
+ document.getElementById("admin-login-panel").style.display="none";
+}
+async function submitAdminLogin(){
+ const b=document.getElementById("admin-login"), username=document.getElementById("admin-username").value.trim(), password=document.getElementById("admin-password").value;
+ const message=document.getElementById("admin-login-message");
+ if(!username||!password){message.textContent="Introduce el usuario y la contraseña.";return}
+ adminAuthHeader="Basic "+btoa(unescape(encodeURIComponent(username+":"+password)));
+ b.disabled=true;message.textContent="Verificando credenciales…";
+ try{
+  await api("/api/dashboard/summary");
+  document.querySelectorAll(".admin-only").forEach(el=>el.classList.remove("admin-only"));
+  document.getElementById("admin-password").value="";
+  document.getElementById("admin-login-panel").style.display="none";
+  b.textContent="Administrador activo";b.disabled=true;
+  refreshDashboard();
+ }catch(e){
+  adminAuthHeader="";
+  b.disabled=false;
+  document.getElementById("admin-password").value="";
+  message.textContent="No se pudo validar el acceso. Comprueba las credenciales o la configuración del servidor.";
+ }
+}
 
 let lastSIEMResult=null;
 function renderSIEMResults(d){
