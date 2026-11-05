@@ -116,7 +116,8 @@ YARA es opcional y necesita instalar el extra `kyros[yara]` y configurar `KYROS_
 
 ## Privacidad y seguridad
 
-- La API y el dashboard requieren HTTP Basic; `/api/health` es público para la comprobación de Render.
+- La portada y los módulos públicos IP, Domain, Email y File Intelligence están disponibles sin iniciar sesión; aplican un límite básico de 15 análisis por minuto y dirección IP.
+- El panel administrativo, métricas internas, historial, SIEM Log Analyzer, Threat Intelligence, Event Correlation, Incident Center, Copiloto IA e integraciones requieren HTTP Basic. Las escrituras siguen exigiendo además `X-Kyros-Request: 1`.
 - Las solicitudes de escritura requieren además la cabecera `X-Kyros-Request: 1`.
 - Se aplican cabeceras de seguridad, incluida CSP y protección contra framing.
 - Las consultas IP y DNS requieren consentimiento explícito. Solo se envía el indicador necesario al servicio correspondiente.
@@ -142,8 +143,8 @@ GitHub Actions ejecuta los controles de calidad en los commits de `main`. La eje
 
 Utiliza exclusivamente los siguientes datos de demostración y archivos de texto ficticios:
 
-1. Abrir la URL de la aplicación y confirmar que solicita autenticación.
-2. Abrir `/api/health` y comprobar que responde con estado `ok`.
+1. Abrir la URL de la aplicación y comprobar que la portada carga sin contraseña. Verificar IP, dominio, correo y archivo con datos ficticios.
+2. Seleccionar Acceso administrador, iniciar sesión con las credenciales configuradas en Render y comprobar que aparecen los módulos internos. Abrir `/api/health` y comprobar que responde con estado `ok`.
 3. En IP Intelligence, analizar `8.8.8.8` dejando desmarcada la consulta externa.
 4. En Domain Intelligence, analizar `example.com` sin marcar consulta DNS.
 5. En Email Intelligence, analizar `analyst@example.com`.
