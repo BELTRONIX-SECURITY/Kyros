@@ -441,7 +441,7 @@ async function submitAdminLogin(){
   adminAuthHeader="";
   b.disabled=false;
   document.getElementById("admin-password").value="";
-  message.textContent="No se pudo validar el acceso. Comprueba las credenciales o la configuración del servidor.";
+  message.textContent="Acceso rechazado: "+(e.message||"Error desconocido")+". Revisa la configuración de autenticación del servidor.";
  }
 }
 
