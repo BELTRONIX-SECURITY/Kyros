@@ -635,7 +635,7 @@ async def add_incident_evidence_item(incident_id: int, request: IncidentEvidence
             "evidence_bytes_stored": False}
 
 
-@app.get("/", include_in_schema=False)
+@app.get("/", include_in_schema=False, dependencies=[Depends(require_auth)])
 async def dashboard():
     index = STATIC_DIR / "index.html"
     if not index.is_file():
