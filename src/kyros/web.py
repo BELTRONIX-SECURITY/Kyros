@@ -350,7 +350,7 @@ async def dashboard_metrics():
     return dashboard_summary()
 
 
-@app.post("/api/analyze/ip", dependencies=[Depends(require_auth), Depends(public_analysis_limit)])
+@app.post("/api/analyze/ip", dependencies=[Depends(public_analysis_limit)])
 async def analyze_ip(payload: IndicatorRequest, request: Request):
     if payload.external_lookup:
         try:
@@ -375,7 +375,7 @@ async def analyze_ip(payload: IndicatorRequest, request: Request):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/domain", dependencies=[Depends(require_auth), Depends(public_analysis_limit)])
+@app.post("/api/analyze/domain", dependencies=[Depends(public_analysis_limit)])
 async def analyze_domain(payload: IndicatorRequest, request: Request):
     if payload.external_lookup:
         try:
@@ -396,7 +396,7 @@ async def analyze_domain(payload: IndicatorRequest, request: Request):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/email", dependencies=[Depends(require_auth), Depends(public_analysis_limit)])
+@app.post("/api/analyze/email", dependencies=[Depends(public_analysis_limit)])
 async def analyze_email(request: IndicatorRequest):
     try:
         result = classify_email(request.indicator)
@@ -405,7 +405,7 @@ async def analyze_email(request: IndicatorRequest):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@app.post("/api/analyze/file", dependencies=[Depends(require_auth), Depends(public_analysis_limit)])
+@app.post("/api/analyze/file", dependencies=[Depends(public_analysis_limit)])
 async def analyze_uploaded_file(file: UploadFile = File(...)):
     data = await file.read(MAX_FILE_SIZE + 1)
     await file.close()
@@ -635,7 +635,7 @@ async def add_incident_evidence_item(incident_id: int, request: IncidentEvidence
             "evidence_bytes_stored": False}
 
 
-@app.get("/", include_in_schema=False, dependencies=[Depends(require_auth)])
+@app.get("/", include_in_schema=False)
 async def dashboard():
     index = STATIC_DIR / "index.html"
     if not index.is_file():
