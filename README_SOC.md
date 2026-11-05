@@ -166,6 +166,14 @@ Cada incidente dispone de un expediente consultable mediante la API protegida:
 - No se adjuntan ni almacenan archivos originales. Las referencias deben apuntar a repositorios controlados por el operador.
 - No hay todavía cadena de custodia criptográfica, firma de eventos ni auditoría inmutable. SQLite en Render Free sigue siendo efímero.
 
+## SIEM Log Analyzer
+
+- Importación local de archivos CSV UTF-8 y Excel XLSX (máximo 12 MB y 20.000 eventos).
+- Normalización de campos de eventos Windows, PowerShell, IIS, proxy y firewall; correlación heurística de patrones y generación de informe SOC L2.
+- El archivo original se procesa en memoria, no se ejecuta, no se almacena y no se envía a proveedores externos.
+- Los patrones identificados son candidatos para revisión del analista; no equivalen a incidentes confirmados ni sustituyen telemetría EDR/SIEM en tiempo real.
+- La revisión IA es opcional y requiere consentimiento explícito; solo se transmite el resumen seleccionado, nunca el archivo original.
+
 ## Pendiente antes de producción
 
 Persistencia y copias de seguridad verificadas, gestión individual de usuarios y MFA/SSO, rate limiting, auditoría, revisión integral de seguridad, pruebas de carga y monitorización. También faltan conectores SIEM/EDR, ingesta automática, reputación externa de IOC, ClamAV y sandbox aislada.
