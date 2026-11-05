@@ -20,6 +20,8 @@ def ai_configuration() -> dict:
         return {"enabled": False, "provider": "invalid_configuration", "model": None}
     if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
         return {"enabled": False, "provider": "https_required", "model": None}
+    if parsed.hostname not in {"localhost", "127.0.0.1", "::1"} and not api_key:
+        return {"enabled": False, "provider": "api_key_required", "model": None}
     return {"enabled": True, "provider": "openai_compatible", "model": model}
 
 
